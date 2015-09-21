@@ -1,3 +1,5 @@
+using System;
+
 namespace Csv
 {
     /// <summary>
@@ -9,6 +11,11 @@ namespace Csv
         /// Gets or sets the number of rows to skip before reading the header row, defaults to <c>0</c>.
         /// </summary>
         public int RowsToSkip { get; set; }
+
+        /// <summary>
+        /// Gets or sets a function to skip the current row based on its raw string value. Skips empty rows and rows starting with # by default.
+        /// </summary>
+        public Func<string, bool> SkipRow { get; set; } = row => string.IsNullOrEmpty(row) || row[0] == '#';
 
         /// <summary>
         ///  Gets or sets the character to use for separating data, default to <c>'\0'</c> which will auto-detect from the header row.

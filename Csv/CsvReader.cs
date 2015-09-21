@@ -64,7 +64,7 @@ namespace Csv
             while ((line = reader.ReadLine()) != null)
             {
                 index++;
-                if (index <= options.RowsToSkip)
+                if (index <= options.RowsToSkip || options.SkipRow?.Invoke(line) == true)
                     continue;
 
                 if (headers == null)
