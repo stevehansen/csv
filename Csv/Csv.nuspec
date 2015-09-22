@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/01/nuspec.xsd">
+    <metadata minClientVersion="2.8">
+        <id>Csv</id>
+        <version>1.0</version>
+        <title>Csv</title>
+        <authors>Steve Hansen</authors>
+        <owners>Steve Hansen</owners>
+        <projectUrl>https://github.com/stevehansen/csv/</projectUrl>
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+        <description>Really simple csv library.</description>
+        <copyright>Copyright © 2015 Steve Hansen</copyright>
+        <tags>csv</tags>
+    </metadata>
+    <files>
+        <file src="..\Csv\bin\Release\Csv.dll" target="lib\portable-net45+win\Csv.dll" />
+    </files>
+</package>
