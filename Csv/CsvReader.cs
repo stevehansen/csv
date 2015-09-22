@@ -10,6 +10,11 @@ namespace Csv
     /// </summary>
     public static class CsvReader
     {
+        /// <summary>
+        /// Reads the lines from the reader.
+        /// </summary>
+        /// <param name="reader">The text reader to read the data from.</param>
+        /// <param name="options">The optional options to use when reading.</param>
         public static IEnumerable<ICsvLine> Read(TextReader reader, CsvOptions options = null)
         {
             if (reader == null)
@@ -18,6 +23,11 @@ namespace Csv
             return ReadImpl(reader, options);
         }
 
+        /// <summary>
+        /// Reads the lines from the stream.
+        /// </summary>
+        /// <param name="stream">The stream to read the data from.</param>
+        /// <param name="options">The optional options to use when reading.</param>
         public static IEnumerable<ICsvLine> ReadFromStream(Stream stream, CsvOptions options = null)
         {
             if (stream == null)
@@ -26,6 +36,11 @@ namespace Csv
             return ReadFromStreamImpl(stream, options);
         }
 
+        /// <summary>
+        /// Reads the lines from the csv string.
+        /// </summary>
+        /// <param name="csv">The csv string to read the data from.</param>
+        /// <param name="options">The optional options to use when reading.</param>
         public static IEnumerable<ICsvLine> ReadFromText(string csv, CsvOptions options = null)
         {
             if (csv == null)
@@ -85,46 +100,72 @@ namespace Csv
                     continue;
                 }
 
-                yield return new ReadLine(headers, headerLookup, SplitLine(line, options));
+                yield return new ReadLine(headers, headerLookup, index, line, options);
             }
         }
 
         private static string[] SplitLine(string line, CsvOptions options)
         {
-            return line.Split(options.Separator).Select(Unescape).ToArray();
-        }
+            var parts = line.Split(options.Separator);
+            for (var i = 0; i < parts.Length; i++)
+            {
+                var str = parts[i];
+                if (options.TrimData)
+                    str = str.Trim();
 
-        private static string Unescape(string text)
-        {
-            text = text.Trim();
+                if ((str.StartsWith("\"") && str.EndsWith("\"")) || (str.StartsWith("'") && str.EndsWith("'")))
+                    str = str.Substring(1, str.Length - 2);
 
-            if (text.StartsWith("\"") && text.EndsWith("\""))
-                return text.Substring(1, text.Length - 2);
-
-            return text;
+                parts[i] = str;
+            }
+            return parts;
         }
 
         private sealed class ReadLine : ICsvLine
         {
             private readonly Dictionary<string, int> headerLookup;
-            private readonly string[] line;
+            private readonly CsvOptions options;
+            private string[] parsedLine;
 
-            public ReadLine(string[] headers, Dictionary<string, int> headerLookup, string[] line)
+            public ReadLine(string[] headers, Dictionary<string, int> headerLookup, int index, string raw, CsvOptions options)
             {
                 this.headerLookup = headerLookup;
-                this.line = line;
+                this.options = options;
                 Headers = headers;
+                Raw = raw;
+                Index = index;
             }
 
             public string[] Headers { get; }
 
-            string ICsvLine.this[string header] => line[headerLookup[header]];
+            public string Raw { get; }
 
-            string ICsvLine.this[int index] => line[index];
+            public int Index { get; }
+
+            private string[] Line
+            {
+                get
+                {
+                    if (parsedLine == null)
+                    {
+                        lock (options)
+                        {
+                            if (parsedLine == null)
+                                parsedLine = SplitLine(Raw, options);
+                        }
+                    }
+
+                    return parsedLine;
+                }
+            }
+
+            string ICsvLine.this[string name] => Line[headerLookup[name]];
+
+            string ICsvLine.this[int index] => Line[index];
 
             public override string ToString()
             {
-                return string.Join(";", line);
+                return Raw;
             }
         }
     }

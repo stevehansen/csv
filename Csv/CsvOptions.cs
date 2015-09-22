@@ -21,5 +21,10 @@ namespace Csv
         ///  Gets or sets the character to use for separating data, default to <c>'\0'</c> which will auto-detect from the header row.
         /// </summary>
         public char Separator { get; set; }
+
+        /// <summary>
+        /// Gets or set wether data should be trimmed when accessed.
+        /// </summary>
+        public bool TrimData { get; set; }
     }
 }
