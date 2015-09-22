@@ -1,4 +1,10 @@
 # csv
 Really simple csv library
 
-[![MyGet Build Status](https://www.myget.org/BuildSource/Badge/xiu?identifier=8a75471b-4420-4dc0-9e36-99bc8538a920)](https://www.myget.org/)
+## Install
+
+To install csv, use the following command in the Package Manager Console
+
+    PM> Install-Package Csv
+
+[![xiu MyGet Build Status](https://www.myget.org/BuildSource/Badge/xiu?identifier=da4b7eae-333b-461f-9e81-47dc6853ea44)](https://www.myget.org/)
