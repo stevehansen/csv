@@ -79,7 +79,7 @@ namespace Csv
             while ((line = reader.ReadLine()) != null)
             {
                 index++;
-                if (index <= options.RowsToSkip || options.SkipRow?.Invoke(line) == true)
+                if (index <= options.RowsToSkip || options.SkipRow?.Invoke(line, index) == true)
                     continue;
 
                 if (headers == null)

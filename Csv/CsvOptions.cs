@@ -13,9 +13,9 @@ namespace Csv
         public int RowsToSkip { get; set; }
 
         /// <summary>
-        /// Gets or sets a function to skip the current row based on its raw string value. Skips empty rows and rows starting with # by default.
+        /// Gets or sets a function to skip the current row based on its raw string value or 1-based index. Skips empty rows and rows starting with # by default.
         /// </summary>
-        public Func<string, bool> SkipRow { get; set; } = row => string.IsNullOrEmpty(row) || row[0] == '#';
+        public Func<string, int, bool> SkipRow { get; set; } = (row, idx) => string.IsNullOrEmpty(row) || row[0] == '#';
 
         /// <summary>
         ///  Gets or sets the character to use for separating data, default to <c>'\0'</c> which will auto-detect from the header row.
