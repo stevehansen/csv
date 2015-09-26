@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace Csv
 {
@@ -18,13 +19,18 @@ namespace Csv
         public Func<string, int, bool> SkipRow { get; set; } = (row, idx) => string.IsNullOrEmpty(row) || row[0] == '#';
 
         /// <summary>
-        ///  Gets or sets the character to use for separating data, default to <c>'\0'</c> which will auto-detect from the header row.
+        ///  Gets or sets the character to use for separating data, defaults to <c>'\0'</c> which will auto-detect from the header row.
         /// </summary>
         public char Separator { get; set; }
 
         /// <summary>
-        /// Gets or set wether data should be trimmed when accessed.
+        /// Gets or sets wether data should be trimmed when accessed.
         /// </summary>
         public bool TrimData { get; set; }
+
+        /// <summary>
+        /// Gets or sets the comparer to use when looking up header names.
+        /// </summary>
+        public IEqualityComparer<string> Comparer { get; set; }
     }
 }

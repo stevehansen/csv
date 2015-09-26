@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Csv.Tests
@@ -146,6 +147,28 @@ namespace Csv.Tests
             Assert.AreEqual("4", lines[1]["A"]);
             Assert.AreEqual("6", lines[1][2]);
             Assert.AreEqual("6", lines[1]["C"]);
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(ArgumentOutOfRangeException))]
+        public void InvalidHeader()
+        {
+            var lines = CsvReader.ReadFromText("A\n1").ToArray();
+            var b = lines[0]["B"];
+            Assert.Fail();
+        }
+
+        [TestMethod]
+        [TestCategory("CsvOptions")]
+        public void IgnoreHeaderCasing()
+        {
+            var lines = CsvReader.ReadFromText("A,B,C\n1,2,3\n4,5,6", new CsvOptions { Comparer = StringComparer.OrdinalIgnoreCase }).ToArray();
+            Assert.AreEqual(2, lines.Length);
+            Assert.AreEqual("1", lines[0][0]);
+            Assert.AreEqual("1", lines[0]["a"]);
+            Assert.AreEqual("4", lines[1]["a"]);
+            Assert.AreEqual("6", lines[1][2]);
+            Assert.AreEqual("6", lines[1]["c"]);
         }
     }
 }

@@ -96,7 +96,7 @@ namespace Csv
                     }
 
                     headers = SplitLine(line, options);
-                    headerLookup = headers.Select((h, idx) => Tuple.Create(h, idx)).ToDictionary(h => h.Item1, h => h.Item2);
+                    headerLookup = headers.Select((h, idx) => Tuple.Create(h, idx)).ToDictionary(h => h.Item1, h => h.Item2, options.Comparer);
                     continue;
                 }
 
@@ -159,7 +159,17 @@ namespace Csv
                 }
             }
 
-            string ICsvLine.this[string name] => Line[headerLookup[name]];
+            string ICsvLine.this[string name]
+            {
+                get
+                {
+                    int index;
+                    if (!headerLookup.TryGetValue(name, out index))
+                        throw new ArgumentOutOfRangeException(nameof(name), name, $"Header '{name}' does not exist. Expected one of {string.Join("; ", headerLookup.Keys)}");
+
+                    return Line[index];
+                }
+            }
 
             string ICsvLine.this[int index] => Line[index];
 
