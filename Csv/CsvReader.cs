@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace Csv
 {
@@ -94,6 +95,7 @@ namespace Csv
                         else
                             options.Separator = ',';
                     }
+                    options.Splitter = new Regex(@"(?>(?(IQ)(?(ESC).(?<-ESC>)|\\(?<ESC>))|(?!))|(?(IQ)\k<QUOTE>(?<-IQ>)|(?<QUOTE>[""'])(?<IQ>))|(?(IQ).|[^" + options.Separator + "]))+", (RegexOptions)8);
 
                     headers = SplitLine(line, options);
                     headerLookup = headers.Select((h, idx) => Tuple.Create(h, idx)).ToDictionary(h => h.Item1, h => h.Item2, options.Comparer);
@@ -106,10 +108,11 @@ namespace Csv
 
         private static string[] SplitLine(string line, CsvOptions options)
         {
-            var parts = line.Split(options.Separator);
-            for (var i = 0; i < parts.Length; i++)
+            var matches = options.Splitter.Matches(line);
+            var parts = new string[matches.Count];
+            for (var i = 0; i < matches.Count; i++)
             {
-                var str = parts[i];
+                var str = matches[i].Value;
                 if (options.TrimData)
                     str = str.Trim();
 

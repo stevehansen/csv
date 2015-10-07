@@ -170,5 +170,22 @@ namespace Csv.Tests
             Assert.AreEqual("6", lines[1][2]);
             Assert.AreEqual("6", lines[1]["c"]);
         }
+
+        [TestMethod]
+        public void QuotedValueSameSeparator()
+        {
+            var lines = CsvReader.ReadFromText("A,B\n\"1,2,3\",4").ToArray();
+            Assert.AreEqual(1, lines.Length);
+            Assert.AreEqual("1,2,3", lines[0]["A"]);
+            Assert.AreEqual("4", lines[0]["B"]);
+        }
+
+        [TestMethod]
+        public void QuotedValueDifferentSeparator()
+        {
+            var lines = CsvReader.ReadFromText("A;B\n\"1,2,3\";4").ToArray();
+            Assert.AreEqual(1, lines.Length);
+            Assert.AreEqual("1,2,3", lines[0]["A"]);
+        }
     }
 }

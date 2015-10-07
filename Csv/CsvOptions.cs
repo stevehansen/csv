@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 namespace Csv
 {
@@ -32,5 +33,7 @@ namespace Csv
         /// Gets or sets the comparer to use when looking up header names.
         /// </summary>
         public IEqualityComparer<string> Comparer { get; set; }
+
+        internal Regex Splitter { get; set; }
     }
 }
