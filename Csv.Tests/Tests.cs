@@ -187,5 +187,26 @@ namespace Csv.Tests
             Assert.AreEqual(1, lines.Length);
             Assert.AreEqual("1,2,3", lines[0]["A"]);
         }
+
+        [TestMethod]
+        public void AllowEmptyValues()
+        {
+            var lines = CsvReader.ReadFromText("head1;head2\ntext1;").ToArray();
+            Assert.AreEqual(1, lines.Length);
+            Assert.AreEqual("", lines[0]["head2"]);
+
+            lines = CsvReader.ReadFromText("head1;head2;head3\ntext1;;text3").ToArray();
+            Assert.AreEqual(1, lines.Length);
+            Assert.AreEqual("", lines[0]["head2"]);
+        }
+
+        [TestMethod]
+        public void AllowWhitespaceValues()
+        {
+            var lines = CsvReader.ReadFromText("head1;head2;head3;head4\ntext1;  ;text3;").ToArray();
+            Assert.AreEqual(1, lines.Length);
+            Assert.AreEqual("  ", lines[0]["head2"]);
+            Assert.AreEqual("", lines[0]["head4"]);
+        }
     }
 }

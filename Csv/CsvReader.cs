@@ -95,7 +95,7 @@ namespace Csv
                         else
                             options.Separator = ',';
                     }
-                    options.Splitter = new Regex(@"(?>(?(IQ)(?(ESC).(?<-ESC>)|\\(?<ESC>))|(?!))|(?(IQ)\k<QUOTE>(?<-IQ>)|(?<QUOTE>[""'])(?<IQ>))|(?(IQ).|[^" + options.Separator + "]))+", (RegexOptions)8);
+                    options.Splitter = new Regex(string.Format(@"(?>(?(IQ)(?(ESC).(?<-ESC>)|\\(?<ESC>))|(?!))|(?(IQ)\k<QUOTE>(?<-IQ>)|(?<QUOTE>[""'])(?<IQ>))|(?(IQ).|[^{0}]))+|(?<={0})(?={0})|(?<={0})$", Regex.Escape(options.Separator.ToString())), (RegexOptions)8);
 
                     headers = SplitLine(line, options);
                     headerLookup = headers.Select((h, idx) => Tuple.Create(h, idx)).ToDictionary(h => h.Item1, h => h.Item2, options.Comparer);
