@@ -203,9 +203,11 @@ namespace Csv.Tests
         [TestMethod]
         public void AllowWhitespaceValues()
         {
-            var lines = CsvReader.ReadFromText("head1;head2;head3;head4\ntext1;  ;text3;").ToArray();
+            var lines = CsvReader.ReadFromText("head1;head2;head3;head4\n;  ;text3;").ToArray();
             Assert.AreEqual(1, lines.Length);
+            Assert.AreEqual("", lines[0]["head1"]);
             Assert.AreEqual("  ", lines[0]["head2"]);
+            Assert.AreEqual("text3", lines[0]["head3"]);
             Assert.AreEqual("", lines[0]["head4"]);
         }
     }
