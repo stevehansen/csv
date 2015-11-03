@@ -58,7 +58,7 @@ namespace Csv.Tests
         [TestMethod]
         public void UnescapeHeaders()
         {
-            var lines = CsvReader.ReadFromText("'A';\"B'\"\nC;D").ToArray();
+            var lines = CsvReader.ReadFromText("\"A\";\"B'\"\nC;D").ToArray();
             Assert.AreEqual(1, lines.Length);
             Assert.AreEqual(2, lines[0].Headers.Length);
             Assert.AreEqual("C", lines[0][0]);
@@ -198,6 +198,12 @@ namespace Csv.Tests
             lines = CsvReader.ReadFromText("head1;head2;head3\ntext1;;text3").ToArray();
             Assert.AreEqual(1, lines.Length);
             Assert.AreEqual("", lines[0]["head2"]);
+            Assert.AreEqual("text3", lines[0]["head3"]);
+
+            lines = CsvReader.ReadFromText("head1;head2;head3\ntext1;\"\";text3").ToArray();
+            Assert.AreEqual(1, lines.Length);
+            Assert.AreEqual("", lines[0]["head2"]);
+            Assert.AreEqual("text3", lines[0]["head3"]);
         }
 
         [TestMethod]
@@ -209,6 +215,16 @@ namespace Csv.Tests
             Assert.AreEqual("  ", lines[0]["head2"]);
             Assert.AreEqual("text3", lines[0]["head3"]);
             Assert.AreEqual("", lines[0]["head4"]);
+        }
+
+        [TestMethod]
+        public void AllowSingleQuoteInsideValue()
+        {
+            var lines = CsvReader.ReadFromText("a;b;c\n\"'\";a'b;'").ToArray();
+            Assert.AreEqual(1, lines.Length);
+            Assert.AreEqual("'", lines[0]["a"]);
+            Assert.AreEqual("a'b", lines[0]["b"]);
+            Assert.AreEqual("'", lines[0]["c"]);
         }
     }
 }

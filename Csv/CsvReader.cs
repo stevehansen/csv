@@ -11,6 +11,9 @@ namespace Csv
     /// </summary>
     public static class CsvReader
     {
+        private static readonly Dictionary<char, Regex> splitterCache = new Dictionary<char, Regex>();
+        private static readonly object syncRoot = new object();
+
         /// <summary>
         /// Reads the lines from the reader.
         /// </summary>
@@ -95,7 +98,15 @@ namespace Csv
                         else
                             options.Separator = ',';
                     }
-                    options.Splitter = new Regex(string.Format(@"(?>(?(IQ)(?(ESC).(?<-ESC>)|\\(?<ESC>))|(?!))|(?(IQ)\k<QUOTE>(?<-IQ>)|(?<QUOTE>[""'])(?<IQ>))|(?(IQ).|[^{0}]))+|^(?={0})|(?<={0})(?={0})|(?<={0})$", Regex.Escape(options.Separator.ToString())), (RegexOptions)8);
+
+                    Regex splitter;
+                    lock (syncRoot)
+                    {
+                        if (!splitterCache.TryGetValue(options.Separator, out splitter))
+                            splitterCache[options.Separator] = splitter = new Regex(string.Format(@"(?>(?(IQ)(?(ESC).(?<-ESC>)|\\(?<ESC>))|(?!))|(?(IQ)\k<QUOTE>(?<-IQ>)|(?<QUOTE>"")(?<IQ>))|(?(IQ).|[^{0}]))+|^(?={0})|(?<={0})(?={0})|(?<={0})$", Regex.Escape(options.Separator.ToString())), (RegexOptions)8);
+                    }
+
+                    options.Splitter = splitter;
 
                     headers = SplitLine(line, options);
                     headerLookup = headers.Select((h, idx) => Tuple.Create(h, idx)).ToDictionary(h => h.Item1, h => h.Item2, options.Comparer);
@@ -116,7 +127,7 @@ namespace Csv
                 if (options.TrimData)
                     str = str.Trim();
 
-                if ((str.StartsWith("\"") && str.EndsWith("\"")) || (str.StartsWith("'") && str.EndsWith("'")))
+                if (str.StartsWith("\"") && str.EndsWith("\""))
                     str = str.Substring(1, str.Length - 2);
 
                 parts[i] = str;
