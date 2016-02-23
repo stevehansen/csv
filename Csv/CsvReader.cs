@@ -80,41 +80,77 @@ namespace Csv
             var index = 0;
             string[] headers = null;
             Dictionary<string, int> headerLookup = null;
+            bool Initalized = false;
             while ((line = reader.ReadLine()) != null)
             {
                 index++;
                 if (index <= options.RowsToSkip || options.SkipRow?.Invoke(line, index) == true)
                     continue;
 
-                if (headers == null)
+                if (!Initalized)
                 {
-                    if (options.Separator == '\0')
-                    {
-                        // NOTE: Try simple 'detection' of possible separator
-                        if (line.Contains(";"))
-                            options.Separator = ';';
-                        else if (line.Contains("\t"))
-                            options.Separator = '\t';
-                        else
-                            options.Separator = ',';
-                    }
+                    InitalizeOptions(line, options);
+                    bool skipInitialLine;
 
-                    Regex splitter;
-                    lock (syncRoot)
-                    {
-                        if (!splitterCache.TryGetValue(options.Separator, out splitter))
-                            splitterCache[options.Separator] = splitter = new Regex(string.Format(@"(?>(?(IQ)(?(ESC).(?<-ESC>)|\\(?<ESC>))|(?!))|(?(IQ)\k<QUOTE>(?<-IQ>)|(?<QUOTE>"")(?<IQ>))|(?(IQ).|[^{0}]))+|^(?={0})|(?<={0})(?={0})|(?<={0})$", Regex.Escape(options.Separator.ToString())), (RegexOptions)8);
-                    }
+                    if (skipInitialLine = (options.HeaderMode == HeaderMode.HeaderPresent))
+                        headers = GetHeaders(line, options);
+                    else
+                        headers = CreateDefaultHeaders(line, options);
 
-                    options.Splitter = splitter;
-
-                    headers = SplitLine(line, options);
                     headerLookup = headers.Select((h, idx) => Tuple.Create(h, idx)).ToDictionary(h => h.Item1, h => h.Item2, options.Comparer);
-                    continue;
+
+                    Initalized = true;
+
+                    if (skipInitialLine)
+                        continue;
                 }
 
                 yield return new ReadLine(headers, headerLookup, index, line, options);
             }
+        }
+
+        private static char AutoDetectSeparator(string sampleLine)
+        {
+            // NOTE: Try simple 'detection' of possible separator
+            if (sampleLine.Contains(";"))
+                return ';';
+            else if (sampleLine.Contains("\t"))
+                return '\t';
+            else
+                return ',';
+        }
+
+        private static string[] CreateDefaultHeaders(string line, CsvOptions options)
+        {
+            var columnCount = options.Splitter.Matches(line);
+
+            string[] headers = new string[columnCount.Count];
+
+            for (int i = 0; i < headers.Length; i++)
+                headers[i] = string.Format("Column{0}", i + 1);
+
+            return headers;
+        }
+
+        private static string[] GetHeaders(string line, CsvOptions options)
+        {
+            return SplitLine(line, options);
+        }
+
+        private static void InitalizeOptions(string line, CsvOptions options)
+        {
+            if (options.Separator == '\0')
+                options.Separator = AutoDetectSeparator(line);
+
+
+            Regex splitter;
+            lock (syncRoot)
+            {
+                if (!splitterCache.TryGetValue(options.Separator, out splitter))
+                    splitterCache[options.Separator] = splitter = new Regex(string.Format(@"(?>(?(IQ)(?(ESC).(?<-ESC>)|\\(?<ESC>))|(?!))|(?(IQ)\k<QUOTE>(?<-IQ>)|(?<QUOTE>"")(?<IQ>))|(?(IQ).|[^{0}]))+|^(?={0})|(?<={0})(?={0})|(?<={0})$", Regex.Escape(options.Separator.ToString())), (RegexOptions)8);
+            }
+
+            options.Splitter = splitter;
         }
 
         private static string[] SplitLine(string line, CsvOptions options)
@@ -168,7 +204,6 @@ namespace Csv
                                 parsedLine = SplitLine(Raw, options);
                         }
                     }
-
                     return parsedLine;
                 }
             }
