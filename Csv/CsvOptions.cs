@@ -34,6 +34,11 @@ namespace Csv
         /// </summary>
         public IEqualityComparer<string> Comparer { get; set; }
 
+        ///<summary>
+        ///Gets or sets an indicator to the parser to expect a header row or not.
+        ///</summary>
+        public HeaderMode HeaderMode { get; set; } = HeaderMode.HeaderPresent;
+
         internal Regex Splitter { get; set; }
     }
 }

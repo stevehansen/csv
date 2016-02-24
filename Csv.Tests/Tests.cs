@@ -160,6 +160,33 @@ namespace Csv.Tests
 
         [TestMethod]
         [TestCategory("CsvOptions")]
+        public void FirstRowIsDataWhenHeaderAbsent()
+        {
+            var lines = CsvReader.ReadFromText("1,2,3\n4,5,6", new CsvOptions { HeaderMode = HeaderMode.HeaderAbsent }).ToArray();
+
+            Assert.AreEqual(2, lines.Length);
+            Assert.AreEqual("1", lines[0][0]);
+            Assert.AreEqual("2", lines[0][1]);
+            Assert.AreEqual("3", lines[0][2]);
+            Assert.AreEqual("4", lines[1][0]);
+            Assert.AreEqual("5", lines[1][1]);
+            Assert.AreEqual("6", lines[1][2]);
+        }
+
+        [TestMethod]
+        [TestCategory("CsvOptions")]
+        public void AbsentHeaderIgnored()
+        {
+            var lines = CsvReader.ReadFromText("1,2,3\n4,5,6", new CsvOptions { HeaderMode = HeaderMode.HeaderAbsent }).ToArray();
+            var headers = lines[0].Headers;
+
+            Assert.AreNotEqual("1", headers[0]);
+            Assert.AreNotEqual("2", headers[1]);
+            Assert.AreNotEqual("3", headers[2]);
+        }
+
+        [TestMethod]
+        [TestCategory("CsvOptions")]
         public void IgnoreHeaderCasing()
         {
             var lines = CsvReader.ReadFromText("A,B,C\n1,2,3\n4,5,6", new CsvOptions { Comparer = StringComparer.OrdinalIgnoreCase }).ToArray();
