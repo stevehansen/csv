@@ -80,26 +80,23 @@ namespace Csv
             var index = 0;
             string[] headers = null;
             Dictionary<string, int> headerLookup = null;
-            bool Initalized = false;
+            var initalized = false;
             while ((line = reader.ReadLine()) != null)
             {
                 index++;
                 if (index <= options.RowsToSkip || options.SkipRow?.Invoke(line, index) == true)
                     continue;
 
-                if (!Initalized)
+                if (!initalized)
                 {
                     InitalizeOptions(line, options);
-                    bool skipInitialLine;
+                    var skipInitialLine = options.HeaderMode == HeaderMode.HeaderPresent;
 
-                    if (skipInitialLine = (options.HeaderMode == HeaderMode.HeaderPresent))
-                        headers = GetHeaders(line, options);
-                    else
-                        headers = CreateDefaultHeaders(line, options);
+                    headers = skipInitialLine ? GetHeaders(line, options) : CreateDefaultHeaders(line, options);
 
                     headerLookup = headers.Select((h, idx) => Tuple.Create(h, idx)).ToDictionary(h => h.Item1, h => h.Item2, options.Comparer);
 
-                    Initalized = true;
+                    initalized = true;
 
                     if (skipInitialLine)
                         continue;
@@ -114,20 +111,19 @@ namespace Csv
             // NOTE: Try simple 'detection' of possible separator
             if (sampleLine.Contains(";"))
                 return ';';
-            else if (sampleLine.Contains("\t"))
+            if (sampleLine.Contains("\t"))
                 return '\t';
-            else
-                return ',';
+            return ',';
         }
 
         private static string[] CreateDefaultHeaders(string line, CsvOptions options)
         {
             var columnCount = options.Splitter.Matches(line);
 
-            string[] headers = new string[columnCount.Count];
+            var headers = new string[columnCount.Count];
 
-            for (int i = 0; i < headers.Length; i++)
-                headers[i] = string.Format("Column{0}", i + 1);
+            for (var i = 0; i < headers.Length; i++)
+                headers[i] = $"Column{i + 1}";
 
             return headers;
         }
@@ -192,16 +188,21 @@ namespace Csv
 
             public int Index { get; }
 
+            public int ColumnCount => Line.Length;
+
             private string[] Line
             {
                 get
                 {
                     if (parsedLine == null)
                     {
-                        lock (options)
+                        lock (headerLookup)
                         {
                             if (parsedLine == null)
                                 parsedLine = SplitLine(Raw, options);
+
+                            if (options.ValidateColumnCount && parsedLine.Length != headerLookup.Count)
+                                throw new InvalidOperationException($"Expected {headerLookup.Count}, only got {parsedLine.Length} columns.");
                         }
                     }
                     return parsedLine;
@@ -216,7 +217,14 @@ namespace Csv
                     if (!headerLookup.TryGetValue(name, out index))
                         throw new ArgumentOutOfRangeException(nameof(name), name, $"Header '{name}' does not exist. Expected one of {string.Join("; ", headerLookup.Keys)}");
 
-                    return Line[index];
+                    try
+                    {
+                        return Line[index];
+                    }
+                    catch (IndexOutOfRangeException)
+                    {
+                        throw new InvalidOperationException($"Invalid row, missing {name} header, expected {headerLookup.Count} columns, only got {Line.Length}");
+                    }
                 }
             }
 

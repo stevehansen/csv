@@ -39,6 +39,11 @@ namespace Csv
         ///</summary>
         public HeaderMode HeaderMode { get; set; } = HeaderMode.HeaderPresent;
 
+        /// <summary>
+        /// Gets or sets wether a row should be validated immediately that the column count matches the header count.
+        /// </summary>
+        public bool ValidateColumnCount { get; set; }
+
         internal Regex Splitter { get; set; }
     }
 }

@@ -21,6 +21,11 @@ namespace Csv
         int Index { get; }
 
         /// <summary>
+        /// Gets the number of columns of the line.
+        /// </summary>
+        int ColumnCount { get; }
+
+        /// <summary>
         /// Gets the data for the specified named header.
         /// </summary>
         /// <param name="name">The name of the header.</param>

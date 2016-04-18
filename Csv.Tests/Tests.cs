@@ -150,6 +150,21 @@ namespace Csv.Tests
         }
 
         [TestMethod]
+        [TestCategory("CsvOptions")]
+        [ExpectedException(typeof(InvalidOperationException))]
+        public void ValidateColumnCount()
+        {
+            var lines = CsvReader.ReadFromText("A,B,C\n1,2").ToArray();
+            Assert.AreEqual(1, lines.Length);
+            Assert.AreEqual("1", lines[0]["A"]);
+
+            lines = CsvReader.ReadFromText("A,B,C\n1,2", new CsvOptions { ValidateColumnCount = true }).ToArray();
+            Assert.AreEqual(1, lines.Length);
+            var a = lines[0]["A"];
+            Assert.Fail("Expected InvalidOperationException");
+        }
+
+        [TestMethod]
         [ExpectedException(typeof(ArgumentOutOfRangeException))]
         public void InvalidHeader()
         {
@@ -252,6 +267,15 @@ namespace Csv.Tests
             Assert.AreEqual("'", lines[0]["a"]);
             Assert.AreEqual("a'b", lines[0]["b"]);
             Assert.AreEqual("'", lines[0]["c"]);
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(InvalidOperationException))]
+        public void ThrowExceptionForUnknownHeaders()
+        {
+            var lines = CsvReader.ReadFromText("a;b;c\na;b").ToArray();
+            var c = lines[0]["c"];
+            Assert.Fail("Expected InvalidOperationException");
         }
     }
 }
