@@ -11,11 +11,13 @@
     <licenseUrl>https://raw.github.com/stevehansen/csv/master/LICENSE</licenseUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>Really simple csv library.</description>
-    <copyright>Copyright © 2015 Steve Hansen</copyright>
+    <copyright>Copyright © 2015-2016 Steve Hansen</copyright>
     <tags>csv</tags>
   </metadata>
   <files>
     <file src="..\Csv\bin\Release\Csv.dll" target="lib\portable-net45+win\Csv.dll" />
     <file src="..\Csv\bin\Release\Csv.xml" target="lib\portable-net45+win\Csv.xml" />
+    <file src="..\Csv\bin\Release\Csv.dll" target="lib\dotnet\Csv.dll" />
+    <file src="..\Csv\bin\Release\Csv.xml" target="lib\dotnet\Csv.xml" />
   </files>
 </package>

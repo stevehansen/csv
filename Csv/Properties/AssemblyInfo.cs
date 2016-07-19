@@ -9,7 +9,7 @@ using System.Reflection;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Steve Hansen")]
 [assembly: AssemblyProduct("Csv")]
-[assembly: AssemblyCopyright("Copyright © Steve Hansen 2015")]
+[assembly: AssemblyCopyright("Copyright © Steve Hansen 2015-2016")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 [assembly: NeutralResourcesLanguage("en")]
