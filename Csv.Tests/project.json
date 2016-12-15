@@ -1,0 +1,28 @@
+{
+  "copyright": "Copyright © Steve Hansen 2015-2016",
+  "language": "en",
+  "title": "Csv.Tests",
+  "description": "Tests for Really simple csv library",
+  "authors": [ "Steve Hansen" ],
+  "version": "1.0.1-*",
+  "dependencies": {
+    "NETStandard.Library": "1.6.1",
+    "MSTest.TestAdapter": "1.1.6-preview",
+    "Csv": "1.0.1-*"
+  },
+  "frameworks": {
+    "net45": {
+      "dependencies": {
+        "MSTest.TestFramework": "1.0.7-preview"
+      }
+    },
+    "net452": {
+      "dependencies": {
+        "MSTest.TestFramework": "1.0.7-preview"
+      }
+    }
+  },
+  "buildOptions": {
+    "xmlDoc": true
+  },
+}
