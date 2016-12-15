@@ -4,11 +4,11 @@
   "title": "Csv.Tests",
   "description": "Tests for Really simple csv library",
   "authors": [ "Steve Hansen" ],
-  "version": "1.0.1-*",
+  "version": "1.0.12-*",
   "dependencies": {
     "NETStandard.Library": "1.6.1",
     "MSTest.TestAdapter": "1.1.6-preview",
-    "Csv": "1.0.1-*"
+    "Csv": "1.0.12-*"
   },
   "frameworks": {
     "net45": {
