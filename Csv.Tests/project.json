@@ -18,11 +18,6 @@
       "dependencies": {
         "MSTest.TestFramework": "1.0.7-preview"
       }
-    },
-    "net452": {
-      "dependencies": {
-        "MSTest.TestFramework": "1.0.7-preview"
-      }
     }
   }
 }

@@ -10,27 +10,7 @@
   },
   "frameworks": {
     "net40": {},
-    "net45": {},
-    "net452": {},
     "netstandard1.0": {
-      "imports": "dnxcore50"
-    },
-    "netstandard1.1": {
-      "imports": "dnxcore50"
-    },
-    "netstandard1.2": {
-      "imports": "dnxcore50"
-    },
-    "netstandard1.3": {
-      "imports": "dnxcore50"
-    },
-    "netstandard1.4": {
-      "imports": "dnxcore50"
-    },
-    "netstandard1.5": {
-      "imports": "dnxcore50"
-    },
-    "netstandard1.6": {
       "imports": "dnxcore50"
     }
   },
