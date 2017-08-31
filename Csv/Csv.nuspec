@@ -11,7 +11,7 @@
     <licenseUrl>https://raw.github.com/stevehansen/csv/master/LICENSE</licenseUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>Really simple csv library.</description>
-    <copyright>Copyright © 2015-2016 Steve Hansen</copyright>
+    <copyright>Copyright © 2015-2017 Steve Hansen</copyright>
     <tags>csv</tags>
   </metadata>
   <files>

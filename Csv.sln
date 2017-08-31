@@ -1,16 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
+# Visual Studio 15
+VisualStudioVersion = 15.0.26730.3
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Csv", "Csv\Csv.xproj", "{C47AD6DF-3CE4-4105-A9A5-C3FE02FAAE06}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Csv", "Csv\Csv.csproj", "{C47AD6DF-3CE4-4105-A9A5-C3FE02FAAE06}"
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Csv.Tests", "Csv.Tests\Csv.Tests.xproj", "{F61D68F1-85FC-4CA7-9FB8-EC2F6A158213}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{A563294F-4119-4ADF-94CB-8BBF5720602A}"
-	ProjectSection(SolutionItems) = preProject
-		global.json = global.json
-	EndProjectSection
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Csv.Tests", "Csv.Tests\Csv.Tests.csproj", "{F61D68F1-85FC-4CA7-9FB8-EC2F6A158213}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -29,5 +24,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {9EF367CC-2E5B-4466-923D-04D7018C691C}
 	EndGlobalSection
 EndGlobal
