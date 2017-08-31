@@ -1,14 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>Tests for Really simple csv library</Description>
-    <Copyright>Copyright © Steve Hansen 2015-2016</Copyright>
     <AssemblyTitle>Csv.Tests</AssemblyTitle>
-    <VersionPrefix>1.0.12</VersionPrefix>
-    <Authors>Steve Hansen</Authors>
     <TargetFramework>net45</TargetFramework>
-    <AssemblyName>Csv.Tests</AssemblyName>
-    <PackageId>Csv.Tests</PackageId>
     <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
     <NetStandardImplicitPackageVersion>1.6.1</NetStandardImplicitPackageVersion>
     <GenerateAssemblyTitleAttribute>false</GenerateAssemblyTitleAttribute>
