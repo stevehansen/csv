@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -109,10 +109,12 @@ namespace Csv
         private static char AutoDetectSeparator(string sampleLine)
         {
             // NOTE: Try simple 'detection' of possible separator
-            if (sampleLine.Contains(";"))
-                return ';';
-            if (sampleLine.Contains("\t"))
-                return '\t';
+            foreach (var ch in sampleLine)
+            {
+                if (ch == ';' || ch == '\t')
+                    return ch;
+            }
+
             return ',';
         }
 
@@ -160,7 +162,7 @@ namespace Csv
                     str = str.Trim();
 
                 if (str.StartsWith("\"") && str.EndsWith("\""))
-                    str = str.Substring(1, str.Length - 2);
+                    str = str.Substring(1, str.Length - 2).Replace("\"\"", "\"");
 
                 parts[i] = str;
             }

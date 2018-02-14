@@ -1,5 +1,7 @@
-﻿using System;
+using System;
+using System.IO;
 using System.Linq;
+using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Csv.Tests
@@ -25,6 +27,8 @@ namespace Csv.Tests
             var lines = CsvReader.ReadFromText("A,B\nC,D").ToArray();
             Assert.AreEqual(1, lines.Length);
             Assert.AreEqual(2, lines[0].Headers.Length);
+            Assert.AreEqual(2, lines[0].ColumnCount);
+            Assert.AreEqual(2, lines[0].Index);
             Assert.AreEqual("C", lines[0][0]);
             Assert.AreEqual("C", lines[0]["A"]);
             Assert.AreEqual("D", lines[0][1]);
@@ -88,6 +92,7 @@ namespace Csv.Tests
             Assert.AreEqual(2, lines.Length);
             Assert.AreEqual("1", lines[0][0]);
             Assert.AreEqual("1", lines[0]["A"]);
+            Assert.AreEqual(3, lines[1].Index);
             Assert.AreEqual("4", lines[1]["A"]);
             Assert.AreEqual("6", lines[1][2]);
             Assert.AreEqual("6", lines[1]["C"]);
@@ -276,6 +281,38 @@ namespace Csv.Tests
             var lines = CsvReader.ReadFromText("a;b;c\na;b").ToArray();
             var c = lines[0]["c"];
             Assert.Fail("Expected InvalidOperationException");
+        }
+
+        [TestMethod]
+        public void AllowDoubleQuoteInsideValue()
+        {
+            var lines = CsvReader.ReadFromText("a;b;c\n\"\"\"\";a'b;'").ToArray();
+            Assert.AreEqual(1, lines.Length);
+            Assert.AreEqual("\"", lines[0]["a"]);
+            Assert.AreEqual("a'b", lines[0]["b"]);
+            Assert.AreEqual("'", lines[0]["c"]);
+        }
+
+        [TestMethod]
+        public void TestReader()
+        {
+            var reader = new StringReader("a;b;c\n\"\"\"\";a'b;'");
+            var lines = CsvReader.Read(reader).ToArray();
+            Assert.AreEqual(1, lines.Length);
+            Assert.AreEqual("\"", lines[0]["a"]);
+            Assert.AreEqual("a'b", lines[0]["b"]);
+            Assert.AreEqual("'", lines[0]["c"]);
+        }
+
+        [TestMethod]
+        public void TestStream()
+        {
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes("a;b;c\n\"\"\"\";a'b;'"));
+            var lines = CsvReader.ReadFromStream(stream).ToArray();
+            Assert.AreEqual(1, lines.Length);
+            Assert.AreEqual("\"", lines[0]["a"]);
+            Assert.AreEqual("a'b", lines[0]["b"]);
+            Assert.AreEqual("'", lines[0]["c"]);
         }
     }
 }
