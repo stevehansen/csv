@@ -15,7 +15,8 @@ namespace Csv
         /// <param name="writer">The text writer to write the data to.</param>
         /// <param name="headers">The headers that should be used for the first line, determines the number of columns.</param>
         /// <param name="lines">The lines with data that should be written.</param>
-        public static void Write(TextWriter writer, string[] headers, IEnumerable<string[]> lines)
+        /// <param name="separator">The separator to use between columns (comma, semicolon, tab, ...)</param>
+        public static void Write(TextWriter writer, string[] headers, IEnumerable<string[]> lines, char separator = ',')
         {
             if (writer == null)
                 throw new ArgumentNullException(nameof(writer));
@@ -25,9 +26,9 @@ namespace Csv
                 throw new ArgumentNullException(nameof(lines));
 
             var columnCount = headers.Length;
-            WriteLine(writer, headers, columnCount);
+            WriteLine(writer, headers, columnCount, separator);
             foreach (var line in lines)
-                WriteLine(writer, line, columnCount);
+                WriteLine(writer, line, columnCount, separator);
         }
 
         /// <summary>
@@ -35,22 +36,24 @@ namespace Csv
         /// </summary>
         /// <param name="headers">The headers that should be used for the first line, determines the number of columns.</param>
         /// <param name="lines">The lines with data that should be written.</param>
-        public static string WriteToText(string[] headers, IEnumerable<string[]> lines)
+        /// <param name="separator">The separator to use between columns (comma, semicolon, tab, ...)</param>
+        public static string WriteToText(string[] headers, IEnumerable<string[]> lines, char separator = ',')
         {
             using (var writer = new StringWriter())
             {
-                Write(writer, headers, lines);
+                Write(writer, headers, lines, separator);
 
                 return writer.ToString();
             }
         }
 
-        private static void WriteLine(TextWriter writer, string[] data, int columnCount)
+        private static void WriteLine(TextWriter writer, string[] data, int columnCount, char separator)
         {
+            var escapeChars = new[] { separator, '\'', '\n' };
             for (var i = 0; i < columnCount; i++)
             {
                 if (i > 0)
-                    writer.Write(',');
+                    writer.Write(separator);
 
                 if (i < data.Length)
                 {
@@ -61,7 +64,7 @@ namespace Csv
                         escape = true;
                         cell = cell.Replace("\"", "\"\"");
                     }
-                    else if (cell.Contains(",") || cell.Contains("'"))
+                    else if (cell.IndexOfAny(escapeChars) >= 0)
                         escape = true;
                     if (escape)
                         writer.Write('"');
