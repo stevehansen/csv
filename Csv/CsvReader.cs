@@ -145,7 +145,7 @@ namespace Csv
             lock (syncRoot)
             {
                 if (!splitterCache.TryGetValue(options.Separator, out splitter))
-                    splitterCache[options.Separator] = splitter = new Regex(string.Format(@"(?>(?(IQ)(?(ESC).(?<-ESC>)|\\(?<ESC>))|(?!))|(?(IQ)\k<QUOTE>(?<-IQ>)|(?<QUOTE>"")(?<IQ>))|(?(IQ).|[^{0}]))+|^(?={0})|(?<={0})(?={0})|(?<={0})$", Regex.Escape(options.Separator.ToString())), (RegexOptions)8);
+                    splitterCache[options.Separator] = splitter = new Regex(string.Format(@"(?>(?(IQ)(?(ESC).(?<-ESC>)|\\(?<ESC>))|(?!))|(?(IQ)\k<QUOTE>(?<-IQ>)|(?<QUOTE>"""")(?<IQ>))|(?(IQ).|[^{0}]))+|^(?={0})|(?<={0})(?={0})|(?<={0})$", Regex.Escape(options.Separator.ToString())), (RegexOptions)8);
             }
 
             options.Splitter = splitter;
