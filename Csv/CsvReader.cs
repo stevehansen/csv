@@ -215,9 +215,13 @@ namespace Csv
             {
                 get
                 {
-                    int index;
-                    if (!headerLookup.TryGetValue(name, out index))
+                    if (!headerLookup.TryGetValue(name, out var index))
+                    {
+                        if (options.ReturnEmptyForMissingColumn)
+                            return string.Empty;
+
                         throw new ArgumentOutOfRangeException(nameof(name), name, $"Header '{name}' does not exist. Expected one of {string.Join("; ", headerLookup.Keys)}");
+                    }
 
                     try
                     {

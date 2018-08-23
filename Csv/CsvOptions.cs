@@ -44,6 +44,11 @@ namespace Csv
         /// </summary>
         public bool ValidateColumnCount { get; set; }
 
+        /// <summary>
+        /// Gets or sets whether an empty string is returned for a missing column.
+        /// </summary>
+        public bool ReturnEmptyForMissingColumn { get; set; }
+
         internal Regex Splitter { get; set; }
     }
 }

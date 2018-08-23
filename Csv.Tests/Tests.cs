@@ -275,8 +275,25 @@ namespace Csv.Tests
         }
 
         [TestMethod]
-        [ExpectedException(typeof(InvalidOperationException))]
+        [ExpectedException(typeof(ArgumentOutOfRangeException))]
         public void ThrowExceptionForUnknownHeaders()
+        {
+            var lines = CsvReader.ReadFromText("a;b\na;b").ToArray();
+            var c = lines[0]["c"];
+            Assert.Fail("Expected ArgumentOutOfRangeException");
+        }
+
+        [TestMethod]
+        public void TestReturnEmptyForMissingColumn()
+        {
+            var lines = CsvReader.ReadFromText("a;b\na;b", new CsvOptions { ReturnEmptyForMissingColumn = true }).ToArray();
+            var c = lines[0]["c"];
+            Assert.AreEqual(string.Empty, c);
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(InvalidOperationException))]
+        public void ThrowExceptionForInvalidNumberOfCells()
         {
             var lines = CsvReader.ReadFromText("a;b;c\na;b").ToArray();
             var c = lines[0]["c"];
