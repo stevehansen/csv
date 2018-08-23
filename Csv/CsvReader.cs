@@ -89,7 +89,7 @@ namespace Csv
 
                 if (!initalized)
                 {
-                    InitalizeOptions(line, options);
+                    InitializeOptions(line, options);
                     var skipInitialLine = options.HeaderMode == HeaderMode.HeaderPresent;
 
                     headers = skipInitialLine ? GetHeaders(line, options) : CreateDefaultHeaders(line, options);
@@ -135,7 +135,7 @@ namespace Csv
             return SplitLine(line, options);
         }
 
-        private static void InitalizeOptions(string line, CsvOptions options)
+        private static void InitializeOptions(string line, CsvOptions options)
         {
             if (options.Separator == '\0')
                 options.Separator = AutoDetectSeparator(line);
