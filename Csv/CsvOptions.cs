@@ -7,6 +7,9 @@ namespace Csv
     /// <summary>
     /// Defines the options that can be passed to customize the reading or writing of csv files.
     /// </summary>
+    /// <remarks>
+    /// Do not reuse an instance of <see cref="CsvOptions"/> for multiple reads or writes.
+    /// </remarks>
     public sealed class CsvOptions
     {
         /// <summary>
@@ -35,7 +38,7 @@ namespace Csv
         public IEqualityComparer<string> Comparer { get; set; }
 
         ///<summary>
-        ///Gets or sets an indicator to the parser to expect a header row or not.
+        /// Gets or sets an indicator to the parser to expect a header row or not.
         ///</summary>
         public HeaderMode HeaderMode { get; set; } = HeaderMode.HeaderPresent;
 
@@ -48,6 +51,14 @@ namespace Csv
         /// Gets or sets whether an empty string is returned for a missing column.
         /// </summary>
         public bool ReturnEmptyForMissingColumn { get; set; }
+
+        /// <summary>
+        /// Can be used to use multiple names for a single column. (e.g. to allow "CategoryName", "Category Name", "Category-Name")
+        /// </summary>
+        /// <remarks>
+        /// A group with no matches is ignored.
+        /// </remarks>
+        public ICollection<string[]> Aliases { get; set; }
 
         internal Regex Splitter { get; set; }
     }

@@ -96,11 +96,39 @@ namespace Csv
 
                     headerLookup = headers.Select((h, idx) => Tuple.Create(h, idx)).ToDictionary(h => h.Item1, h => h.Item2, options.Comparer);
 
+                    var aliases = options.Aliases;
+                    if (aliases != null)
+                    {
+                        // NOTE: For each group we need at most 1 match (i.e. SingleOrDefault)
+                        foreach (var aliasGroup in aliases)
+                        {
+                            var groupIndex = -1;
+                            foreach (var alias in aliasGroup)
+                            {
+                                if (headerLookup.TryGetValue(alias, out var aliasIndex))
+                                {
+                                    if (groupIndex != -1)
+                                        throw new InvalidOperationException("Found multiple matches within alias group: " + string.Join(";", aliasGroup));
+
+                                    groupIndex = aliasIndex;
+                                }
+                            }
+
+                            if (groupIndex != -1)
+                            {
+                                foreach (var alias in aliasGroup)
+                                    headerLookup[alias] = groupIndex;
+                            }
+                        }
+                    }
+
                     initalized = true;
 
                     if (skipInitialLine)
                         continue;
                 }
+
+                // TODO: #11 might need to read another line if this one isn't ended yet (i.e. open quoted value)
 
                 yield return new ReadLine(headers, headerLookup, index, line, options);
             }
@@ -192,6 +220,8 @@ namespace Csv
 
             public int ColumnCount => Line.Length;
 
+            public bool HasColumn(string name) => headerLookup.TryGetValue(name, out _);
+
             private string[] Line
             {
                 get
@@ -204,7 +234,7 @@ namespace Csv
                                 parsedLine = SplitLine(Raw, options);
 
                             if (options.ValidateColumnCount && parsedLine.Length != headerLookup.Count)
-                                throw new InvalidOperationException($"Expected {headerLookup.Count}, only got {parsedLine.Length} columns.");
+                                throw new InvalidOperationException($"Expected {headerLookup.Count}, got {parsedLine.Length} columns.");
                         }
                     }
                     return parsedLine;
@@ -229,7 +259,7 @@ namespace Csv
                     }
                     catch (IndexOutOfRangeException)
                     {
-                        throw new InvalidOperationException($"Invalid row, missing {name} header, expected {headerLookup.Count} columns, only got {Line.Length}");
+                        throw new InvalidOperationException($"Invalid row, missing {name} header, expected {headerLookup.Count} columns, got {Line.Length} columns.");
                     }
                 }
             }

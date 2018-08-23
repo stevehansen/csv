@@ -166,7 +166,6 @@ namespace Csv.Tests
             lines = CsvReader.ReadFromText("A,B,C\n1,2", new CsvOptions { ValidateColumnCount = true }).ToArray();
             Assert.AreEqual(1, lines.Length);
             var a = lines[0]["A"];
-            Assert.Fail("Expected InvalidOperationException");
         }
 
         [TestMethod]
@@ -175,7 +174,6 @@ namespace Csv.Tests
         {
             var lines = CsvReader.ReadFromText("A\n1").ToArray();
             var b = lines[0]["B"];
-            Assert.Fail();
         }
 
         [TestMethod]
@@ -280,7 +278,6 @@ namespace Csv.Tests
         {
             var lines = CsvReader.ReadFromText("a;b\na;b").ToArray();
             var c = lines[0]["c"];
-            Assert.Fail("Expected ArgumentOutOfRangeException");
         }
 
         [TestMethod]
@@ -292,12 +289,20 @@ namespace Csv.Tests
         }
 
         [TestMethod]
+        public void TestHasHeader()
+        {
+            var lines = CsvReader.ReadFromText("a;b\na;b").ToArray();
+            var line = lines[0];
+            Assert.IsTrue(line.HasColumn("a"));
+            Assert.IsFalse(line.HasColumn("c"));
+        }
+
+        [TestMethod]
         [ExpectedException(typeof(InvalidOperationException))]
         public void ThrowExceptionForInvalidNumberOfCells()
         {
             var lines = CsvReader.ReadFromText("a;b;c\na;b").ToArray();
             var c = lines[0]["c"];
-            Assert.Fail("Expected InvalidOperationException");
         }
 
         [TestMethod]
@@ -330,6 +335,38 @@ namespace Csv.Tests
             Assert.AreEqual("\"", lines[0]["a"]);
             Assert.AreEqual("a'b", lines[0]["b"]);
             Assert.AreEqual("'", lines[0]["c"]);
+        }
+
+        [TestMethod]
+        public void TestAlias()
+        {
+            var lines = CsvReader.ReadFromText("a;b;c\n\"\"\"\";a'b;'", new CsvOptions { Aliases = new[] { new[] { "d", "a" } } }).ToArray();
+            Assert.AreEqual(1, lines.Length);
+            Assert.AreEqual("\"", lines[0]["a"]);
+            Assert.AreEqual("\"", lines[0]["d"]);
+            Assert.IsTrue(lines[0].HasColumn("a"));
+            Assert.IsTrue(lines[0].HasColumn("d"));
+            Assert.AreEqual(3, lines[0].ColumnCount);
+            Assert.AreEqual("a'b", lines[0]["b"]);
+            Assert.AreEqual("'", lines[0]["c"]);
+        }
+
+        [TestMethod]
+        public void TestAliasIgnoreMissingGroup()
+        {
+            var lines = CsvReader.ReadFromText("a;b;c\n\"\"\"\";a'b;'", new CsvOptions { Aliases = new[] { new[] { "d", "e" } } }).ToArray();
+            Assert.AreEqual(1, lines.Length);
+            Assert.AreEqual("\"", lines[0]["a"]);
+            Assert.AreEqual("a'b", lines[0]["b"]);
+            Assert.AreEqual("'", lines[0]["c"]);
+            Assert.IsFalse(lines[0].HasColumn("d"));
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(InvalidOperationException))]
+        public void TestAliasDuplicatesInGroup()
+        {
+            CsvReader.ReadFromText("a;b;c\n\"\"\"\";a'b;'", new CsvOptions { Aliases = new[] { new[] { "b", "a" } } }).ToArray();
         }
     }
 }

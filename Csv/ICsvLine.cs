@@ -26,6 +26,11 @@ namespace Csv
         int ColumnCount { get; }
 
         /// <summary>
+        /// Indicates whether the specified <paramref name="name"/> exists.
+        /// </summary>
+        bool HasColumn(string name);
+
+        /// <summary>
         /// Gets the data for the specified named header.
         /// </summary>
         /// <param name="name">The name of the header.</param>
