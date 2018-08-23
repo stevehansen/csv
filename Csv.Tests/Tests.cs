@@ -352,6 +352,20 @@ namespace Csv.Tests
         }
 
         [TestMethod]
+        public void TestAliasAndValidateColumnCount()
+        {
+            var lines = CsvReader.ReadFromText("a;b;c\n\"\"\"\";a'b;'", new CsvOptions { Aliases = new[] { new[] { "d", "a" } }, ValidateColumnCount = true }).ToArray();
+            Assert.AreEqual(1, lines.Length);
+            Assert.AreEqual("\"", lines[0]["a"]);
+            Assert.AreEqual("\"", lines[0]["d"]);
+            Assert.IsTrue(lines[0].HasColumn("a"));
+            Assert.IsTrue(lines[0].HasColumn("d"));
+            Assert.AreEqual(3, lines[0].ColumnCount);
+            Assert.AreEqual("a'b", lines[0]["b"]);
+            Assert.AreEqual("'", lines[0]["c"]);
+        }
+
+        [TestMethod]
         public void TestAliasIgnoreMissingGroup()
         {
             var lines = CsvReader.ReadFromText("a;b;c\n\"\"\"\";a'b;'", new CsvOptions { Aliases = new[] { new[] { "d", "e" } } }).ToArray();

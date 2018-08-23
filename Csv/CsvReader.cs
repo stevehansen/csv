@@ -233,8 +233,8 @@ namespace Csv
                             if (parsedLine == null)
                                 parsedLine = SplitLine(Raw, options);
 
-                            if (options.ValidateColumnCount && parsedLine.Length != headerLookup.Count)
-                                throw new InvalidOperationException($"Expected {headerLookup.Count}, got {parsedLine.Length} columns.");
+                            if (options.ValidateColumnCount && parsedLine.Length != Headers.Length)
+                                throw new InvalidOperationException($"Expected {Headers.Length}, got {parsedLine.Length} columns.");
                         }
                     }
                     return parsedLine;
@@ -250,7 +250,7 @@ namespace Csv
                         if (options.ReturnEmptyForMissingColumn)
                             return string.Empty;
 
-                        throw new ArgumentOutOfRangeException(nameof(name), name, $"Header '{name}' does not exist. Expected one of {string.Join("; ", headerLookup.Keys)}");
+                        throw new ArgumentOutOfRangeException(nameof(name), name, $"Header '{name}' does not exist. Expected one of {string.Join("; ", Headers)}");
                     }
 
                     try
@@ -259,7 +259,7 @@ namespace Csv
                     }
                     catch (IndexOutOfRangeException)
                     {
-                        throw new InvalidOperationException($"Invalid row, missing {name} header, expected {headerLookup.Count} columns, got {Line.Length} columns.");
+                        throw new InvalidOperationException($"Invalid row, missing {name} header, expected {Headers.Length} columns, got {Line.Length} columns.");
                     }
                 }
             }
