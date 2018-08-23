@@ -25,7 +25,7 @@ namespace Csv
         public char Separator { get; set; }
 
         /// <summary>
-        /// Gets or sets wether data should be trimmed when accessed.
+        /// Gets or sets whether data should be trimmed when accessed.
         /// </summary>
         public bool TrimData { get; set; }
 
@@ -40,7 +40,7 @@ namespace Csv
         public HeaderMode HeaderMode { get; set; } = HeaderMode.HeaderPresent;
 
         /// <summary>
-        /// Gets or sets wether a row should be validated immediately that the column count matches the header count.
+        /// Gets or sets whether a row should be validated immediately that the column count matches the header count.
         /// </summary>
         public bool ValidateColumnCount { get; set; }
 
