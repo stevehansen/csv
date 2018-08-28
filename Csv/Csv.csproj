@@ -13,6 +13,8 @@
     <PackageIconUrl>https://raw.github.com/stevehansen/csv/master/icon.png</PackageIconUrl>
     <PackageProjectUrl>https://github.com/stevehansen/csv/</PackageProjectUrl>
     <PackageLicenseUrl>https://raw.github.com/stevehansen/csv/master/LICENSE</PackageLicenseUrl>
+	<RepositoryUrl>https://github.com/stevehansen/csv.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
     <NetStandardImplicitPackageVersion>1.6.0</NetStandardImplicitPackageVersion>
     <PackageTargetFallback Condition=" '$(TargetFramework)' == 'netstandard1.0' ">$(PackageTargetFallback);dnxcore50</PackageTargetFallback>
     <GenerateAssemblyTitleAttribute>true</GenerateAssemblyTitleAttribute>
@@ -30,6 +32,10 @@
   <ItemGroup Condition=" '$(TargetFramework)' == 'net40' ">
     <Reference Include="System" />
     <Reference Include="Microsoft.CSharp" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0-beta-63127-02" PrivateAssets="All"/>
   </ItemGroup>
 
 </Project>
