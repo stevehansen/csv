@@ -222,6 +222,8 @@ namespace Csv
 
             public bool HasColumn(string name) => headerLookup.TryGetValue(name, out _);
 
+            public string[] Values => Line;
+
             private string[] Line
             {
                 get
