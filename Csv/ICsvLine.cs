@@ -11,6 +11,11 @@ namespace Csv
         string[] Headers { get; }
 
         /// <summary>
+        /// Gets a list of values in string format for the current row.
+        /// </summary>
+        string[] Values { get; }
+
+        /// <summary>
         /// Gets the original raw content of the line.
         /// </summary>
         string Raw { get; }

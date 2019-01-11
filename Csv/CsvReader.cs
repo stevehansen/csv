@@ -210,6 +210,7 @@ namespace Csv
                 Headers = headers;
                 Raw = raw;
                 Index = index;
+                Values = Line;
             }
 
             public string[] Headers { get; }
@@ -221,6 +222,8 @@ namespace Csv
             public int ColumnCount => Line.Length;
 
             public bool HasColumn(string name) => headerLookup.TryGetValue(name, out _);
+
+            public string[] Values { get; }
 
             private string[] Line
             {
