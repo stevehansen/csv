@@ -25,6 +25,7 @@ More examples can be found in the tests.
 ## Build status
 [![Build status](https://ci.appveyor.com/api/projects/status/d1m0vu1n7idsk7uu?svg=true)](https://ci.appveyor.com/project/SteveHansen/csv)
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fstevehansen%2Fcsv.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fstevehansen%2Fcsv?ref=badge_shield)
+[![codecov](https://codecov.io/gh/stevehansen/csv/branch/master/graph/badge.svg)](https://codecov.io/gh/stevehansen/csv)
 
 
 ## License
