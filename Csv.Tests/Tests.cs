@@ -205,6 +205,16 @@ namespace Csv.Tests
 
         [TestMethod]
         [TestCategory("CsvOptions")]
+        [ExpectedException(typeof(InvalidOperationException))]
+        public void AbsentHeaderWarnDuplicate()
+        {
+            CsvReader.ReadFromText(",,\n4,5,6").ToArray();
+
+            Assert.Fail("Expected InvalidOperationException");
+        }
+
+        [TestMethod]
+        [TestCategory("CsvOptions")]
         public void IgnoreHeaderCasing()
         {
             var lines = CsvReader.ReadFromText("A,B,C\n1,2,3\n4,5,6", new CsvOptions { Comparer = StringComparer.OrdinalIgnoreCase }).ToArray();

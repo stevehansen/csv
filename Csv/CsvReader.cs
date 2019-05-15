@@ -94,7 +94,14 @@ namespace Csv
 
                     headers = skipInitialLine ? GetHeaders(line, options) : CreateDefaultHeaders(line, options);
 
-                    headerLookup = headers.Select((h, idx) => Tuple.Create(h, idx)).ToDictionary(h => h.Item1, h => h.Item2, options.Comparer);
+                    try
+                    {
+                        headerLookup = headers.Select((h, idx) => Tuple.Create(h, idx)).ToDictionary(h => h.Item1, h => h.Item2, options.Comparer);
+                    }
+                    catch (ArgumentException)
+                    {
+                        throw new InvalidOperationException("Duplicate headers detected in HeaderPresent mode. If you don't have a header you can set the HeaderMode to HeaderAbsent.");
+                    }
 
                     var aliases = options.Aliases;
                     if (aliases != null)
