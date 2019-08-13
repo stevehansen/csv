@@ -244,6 +244,19 @@ namespace Csv.Tests
         }
 
         [TestMethod]
+        public void SingleQuotedValueSameSeparator()
+        {
+            var options = new CsvOptions
+            {
+                AllowSingleQuoteToEncloseFieldValues = true
+            };
+            var lines = CsvReader.ReadFromText("A,B\n'1,2,3',4", options).ToArray();
+            Assert.AreEqual(1, lines.Length);
+            Assert.AreEqual("1,2,3", lines[0]["A"]);
+            Assert.AreEqual("4", lines[0]["B"]);
+        }
+
+        [TestMethod]
         public void AllowEmptyValues()
         {
             var lines = CsvReader.ReadFromText("head1;head2\ntext1;").ToArray();
@@ -323,6 +336,62 @@ namespace Csv.Tests
             Assert.AreEqual("\"", lines[0]["a"]);
             Assert.AreEqual("a'b", lines[0]["b"]);
             Assert.AreEqual("'", lines[0]["c"]);
+        }
+
+        [TestMethod]
+        public void WithAllowNewLineInEnclosedFieldValues_AllowLFInsideQuotedValue()
+        {
+            var options = new CsvOptions
+            {
+                AllowNewLineInEnclosedFieldValues = true,
+                NewLine = "\r\n"
+            };
+            var lines = CsvReader.ReadFromText("a,b,c\n\"one\"\"\ntwo\",a'b,'", options).ToArray();
+            Assert.AreEqual(1, lines.Length);
+            Assert.AreEqual("one\"\r\ntwo", lines[0]["a"]);
+            Assert.AreEqual("a'b", lines[0]["b"]);
+            Assert.AreEqual("'", lines[0]["c"]);
+        }
+
+        [TestMethod]
+        public void WithAllowNewLineInEnclosedFieldValues_AllowCRLFInsideQuotedValue()
+        {
+            var options = new CsvOptions
+            {
+                AllowNewLineInEnclosedFieldValues = true,
+                NewLine = "\n",
+                AllowBackSlashToEscapeQuote = true
+            };
+            var lines = CsvReader.ReadFromText("a,b,c\n\"one\\\"\r\ntwo\",a'b,'", options).ToArray();
+            Assert.AreEqual(1, lines.Length);
+            Assert.AreEqual("one\"\ntwo", lines[0]["a"]);
+            Assert.AreEqual("a'b", lines[0]["b"]);
+            Assert.AreEqual("'", lines[0]["c"]);
+        }
+
+        [TestMethod]
+        public void AllowSingleQuoteToEncloseFieldValues()
+        {
+            var options = new CsvOptions
+            {
+                AllowSingleQuoteToEncloseFieldValues = true,
+                AllowNewLineInEnclosedFieldValues = true
+            };
+            var lines = CsvReader.ReadFromText("a,b,c,d\n'one\"\r\ntwo',a'b,'", options).ToArray();
+            Assert.AreEqual(1, lines.Length);
+            Assert.AreEqual($"one\"{Environment.NewLine}two", lines[0]["a"]);
+            Assert.AreEqual("a'b", lines[0]["b"]);
+            Assert.AreEqual("'", lines[0]["c"]);
+        }
+
+        [TestMethod]
+        public void UnmatchedDoubleQuoteAtEndOfStringShouldNotCauseError()
+        {
+            var lines = CsvReader.ReadFromText("a,b,c\none two,a'b,\"").ToArray();
+            Assert.AreEqual(1, lines.Length);
+            Assert.AreEqual($"one two", lines[0]["a"]);
+            Assert.AreEqual("a'b", lines[0]["b"]);
+            Assert.AreEqual("\"", lines[0]["c"]);
         }
 
         [TestMethod]

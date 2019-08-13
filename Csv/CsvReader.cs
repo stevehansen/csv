@@ -11,7 +11,7 @@ namespace Csv
     /// </summary>
     public static class CsvReader
     {
-        private static readonly Dictionary<char, Regex> splitterCache = new Dictionary<char, Regex>();
+        private static readonly Dictionary<Tuple<char, bool>, Regex> splitterCache = new Dictionary<Tuple<char, bool>, Regex>();
         private static readonly object syncRoot = new object();
 
         /// <summary>
@@ -135,9 +135,23 @@ namespace Csv
                         continue;
                 }
 
-                // TODO: #11 might need to read another line if this one isn't ended yet (i.e. open quoted value)
+                var record = new ReadLine(headers, headerLookup, index, line, options);
+                if (options.AllowNewLineInEnclosedFieldValues)
+                {
+                    var lastField = record.RawSplitLine.Last();
+                    while (IsUnterminatedQuotedValue(lastField, options))
+                    {
+                        var nextLine = reader.ReadLine();
+                        if (nextLine == null)
+                        {
+                            break;
+                        }
+                        line += options.NewLine + nextLine;
+                        record = new ReadLine(headers, headerLookup, index, line, options);
+                    }
+                }
 
-                yield return new ReadLine(headers, headerLookup, index, line, options);
+                yield return record;
             }
         }
 
@@ -167,7 +181,7 @@ namespace Csv
 
         private static string[] GetHeaders(string line, CsvOptions options)
         {
-            return SplitLine(line, options);
+            return Trim(SplitLine(line, options), options);
         }
 
         private static void InitializeOptions(string line, CsvOptions options)
@@ -179,35 +193,87 @@ namespace Csv
             Regex splitter;
             lock (syncRoot)
             {
-                if (!splitterCache.TryGetValue(options.Separator, out splitter))
-                    splitterCache[options.Separator] = splitter = new Regex(string.Format(@"(?>(?(IQ)(?(ESC).(?<-ESC>)|\\(?<ESC>))|(?!))|(?(IQ)\k<QUOTE>(?<-IQ>)|(?<QUOTE>"")(?<IQ>))|(?(IQ).|[^{0}]))+|^(?={0})|(?<={0})(?={0})|(?<={0})$", Regex.Escape(options.Separator.ToString())), (RegexOptions)8);
+                var key = new Tuple<char, bool>(options.Separator, options.AllowSingleQuoteToEncloseFieldValues);
+                if (!splitterCache.TryGetValue(key, out splitter))
+                    splitterCache[key] = splitter = CreateRegex(options);
             }
 
             options.Splitter = splitter;
         }
 
+        private static Regex CreateRegex(CsvOptions options)
+        {
+            var pattern = @"(?>(?(IQ)(?(ESC).(?<-ESC>)|\\(?<ESC>))|(?!))|(?(IQ)\k<QUOTE>(?<-IQ>)|(?<=^|{0})(?<QUOTE>[{1}])(?<IQ>))|(?(IQ).|[^{0}]))+|^(?={0})|(?<={0})(?={0})|(?<={0})$";
+            var separator = Regex.Escape(options.Separator.ToString());
+            var quoteChars = options.AllowSingleQuoteToEncloseFieldValues ? "\"'" : "\"";
+            // Since netstandard1.0 doesn't include RegexOptions.Compiled, we include it by value (in case the target platform supports it)
+            var regexOptions = RegexOptions.Singleline | ((RegexOptions/*.Compiled*/)8);
+            return new Regex(string.Format(pattern, separator, quoteChars), regexOptions);
+        }
+
         private static string[] SplitLine(string line, CsvOptions options)
         {
             var matches = options.Splitter.Matches(line);
-            var parts = new string[matches.Count];
-            for (var i = 0; i < matches.Count; i++)
+            return matches.Cast<Match>()
+                .Select(m => m.Value)
+                .ToArray();
+        }
+
+        private static string[] Trim(string[] line, CsvOptions options)
+        {
+            return line.Select(str =>
             {
-                var str = matches[i].Value;
                 if (options.TrimData)
                     str = str.Trim();
 
-                if (str.StartsWith("\"") && str.EndsWith("\""))
+                if (str.StartsWith("\"") && str.EndsWith("\"") && str.Length > 1)
+                {
                     str = str.Substring(1, str.Length - 2).Replace("\"\"", "\"");
+                    if (options.AllowBackSlashToEscapeQuote)
+                    {
+                        str = str.Replace("\\\"", "\"");
+                    }
+                }
+                else if (options.AllowSingleQuoteToEncloseFieldValues && str.StartsWith("'") && str.EndsWith("'") && str.Length > 1)
+                {
+                    str = str.Substring(1, str.Length - 2);
+                }
 
-                parts[i] = str;
+                return str;
+            }).ToArray();
+        }
+
+        private static bool IsUnterminatedQuotedValue(string value, CsvOptions options)
+        {
+            char quoteChar;
+            if (value.StartsWith("\""))
+            {
+                quoteChar = '"';
             }
-            return parts;
+            else if(options.AllowSingleQuoteToEncloseFieldValues && value.StartsWith("'"))
+            {
+                quoteChar = '\'';
+            }
+            else
+            {
+                return false;
+            }
+
+            var trailingQuotes = Regex.Match(value, $@"\\?{quoteChar}+$").Value;
+            // if the first trailing quote is escaped, ignore it
+            if (options.AllowBackSlashToEscapeQuote && trailingQuotes.StartsWith("\\"))
+            {
+                trailingQuotes = trailingQuotes.Substring(2);
+            }
+            // the value is properly terminated if there are an odd number of unescaped quotes at the end
+            return trailingQuotes.Length % 2 == 0;
         }
 
         private sealed class ReadLine : ICsvLine
         {
             private readonly Dictionary<string, int> headerLookup;
             private readonly CsvOptions options;
+            private string[] rawSplitLine;
             private string[] parsedLine;
 
             public ReadLine(string[] headers, Dictionary<string, int> headerLookup, int index, string raw, CsvOptions options)
@@ -229,6 +295,24 @@ namespace Csv
 
             public bool HasColumn(string name) => headerLookup.TryGetValue(name, out _);
 
+            internal string[] RawSplitLine
+            {
+                get
+                {
+                    if (rawSplitLine == null)
+                    {
+                        lock (headerLookup)
+                        {
+                            if (rawSplitLine == null)
+                            {
+                                rawSplitLine = SplitLine(Raw, options);
+                            }
+                        }
+                    }
+                    return rawSplitLine;
+                }
+            }
+
             public string[] Values => Line;
 
             private string[] Line
@@ -237,15 +321,14 @@ namespace Csv
                 {
                     if (parsedLine == null)
                     {
-                        lock (headerLookup)
-                        {
-                            if (parsedLine == null)
-                                parsedLine = SplitLine(Raw, options);
+                        var raw = RawSplitLine;
 
-                            if (options.ValidateColumnCount && parsedLine.Length != Headers.Length)
-                                throw new InvalidOperationException($"Expected {Headers.Length}, got {parsedLine.Length} columns.");
-                        }
+                        if (options.ValidateColumnCount && raw.Length != Headers.Length)
+                            throw new InvalidOperationException($"Expected {Headers.Length}, got {raw.Length} columns.");
+
+                        parsedLine = Trim(raw, options);
                     }
+
                     return parsedLine;
                 }
             }
