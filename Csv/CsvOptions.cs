@@ -60,6 +60,29 @@ namespace Csv
         /// </remarks>
         public ICollection<string[]> Aliases { get; set; }
 
+        /// <summary>
+        /// Respects new line (either \r\n or \n) characters inside field values enclosed in double quotes.
+        /// </summary>
+        public bool AllowNewLineInEnclosedFieldValues { get; set; }
+
+        /// <summary>
+        /// Allows the sequence "\"" to be a valid quoted value (in addition to the standard """")
+        /// </summary>
+        public bool AllowBackSlashToEscapeQuote { get; set; }
+
+        /// <summary>
+        /// Allows the single-quote character to be used to enclose field values
+        /// </summary>
+        public bool AllowSingleQuoteToEncloseFieldValues { get; set; }
+
+        /// <summary>
+        /// The new line string to use when multiline field values are read
+        /// </summary>
+        /// <remarks>
+        /// Requires "AllowNewLineInEnclosedFieldValues" to be set to "true" for this to have any effect.
+        /// </remarks>
+        public string NewLine { get; set; } = Environment.NewLine;
+
         internal Regex Splitter { get; set; }
     }
 }
