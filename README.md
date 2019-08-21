@@ -14,7 +14,7 @@ _More examples can be found in the tests._
 ### Reading a CSV file
 
 ```csharp
-// NOTE: Library assumes that the csv data will have a header row
+// NOTE: Library assumes that the csv data will have a header row by default, see CsvOptions.HeaderMode
 /*
 # comments are ignored
 Column name,Second column,Third column
@@ -29,6 +29,8 @@ foreach (var line in CsvReader.ReadFromText(csv))
     var byName = line["Column name"];
 }
 ```
+
+`CsvReader` also supports reading from a `TextReader` (`CsvReader.Read(TextReader, CsvOptions)`) or a `Stream` (`CsvReader.ReadFromStream(Stream, CsvOptions)`)
 
 `CsvOptions` can be used to configure the csv parsing:
 
