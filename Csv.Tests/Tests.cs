@@ -296,6 +296,54 @@ namespace Csv.Tests
         }
 
         [TestMethod]
+        public void WithNewLineInQuotedFieldValue_MultipleRecordsHandledCorrectly()
+        {
+            const string input = @"ID,Notes,User
+2,"" * Bullet 1
+* Bullet 2
+* Bullet 3
+* Bullet 4
+* Bullet 5
+"",Joe
+3,""* Bullet 1
+* Bullet 2
+* Bullet 3
+* Bullet 4
+* Bullet 5
+"",Joe
+";
+            var options = new CsvOptions { AllowNewLineInEnclosedFieldValues = true };
+            var records = CsvReader.ReadFromText(input, options).ToArray();
+            Assert.AreEqual(2, records.Length);
+            Assert.AreEqual(3, records[0].ColumnCount);
+            Assert.AreEqual(3, records[0].ColumnCount);
+        }
+
+        [TestMethod]
+        public void WithNewLineWithDelimiterInQuotedFieldValue_MultipleRecordsHandledCorrectly()
+        {
+            const string input = @"ID,Notes,User
+2,"" * Bullet 1,
+* Bullet 2,
+* Bullet 3,
+* Bullet 4,
+* Bullet 5,
+"",Joe
+3,""* Bullet 1,
+* Bullet 2,
+* Bullet 3,
+* Bullet 4,
+* Bullet 5,
+"",Joe
+";
+            var options = new CsvOptions { AllowNewLineInEnclosedFieldValues = true };
+            var records = CsvReader.ReadFromText(input, options).ToArray();
+            Assert.AreEqual(2, records.Length);
+            Assert.AreEqual(3, records[0].ColumnCount);
+            Assert.AreEqual(3, records[0].ColumnCount);
+        }
+
+        [TestMethod]
         [ExpectedException(typeof(ArgumentOutOfRangeException))]
         public void ThrowExceptionForUnknownHeaders()
         {
