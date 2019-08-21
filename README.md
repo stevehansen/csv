@@ -7,10 +7,14 @@ To install csv, use the following command in the Package Manager Console
 
     PM> Install-Package Csv
 
-## Usage
+## Basic Usage
+
+_More examples can be found in the tests._
+
+### Reading a CSV file
 
 ```csharp
-// NOTE: Library assumes that the csv data will have a header row
+// NOTE: Library assumes that the csv data will have a header row by default, see CsvOptions.HeaderMode
 /*
 # comments are ignored
 Column name,Second column,Third column
@@ -26,7 +30,10 @@ foreach (var line in CsvReader.ReadFromText(csv))
 }
 ```
 
-CsvOptions can be used to configured the csv parsing:
+`CsvReader` also supports reading from a `TextReader` (`CsvReader.Read(TextReader, CsvOptions)`) or a `Stream` (`CsvReader.ReadFromStream(Stream, CsvOptions)`)
+
+`CsvOptions` can be used to configure the csv parsing:
+
 ```csharp
 var options = new CsvOptions // Defaults
 {
@@ -39,10 +46,32 @@ var options = new CsvOptions // Defaults
     ValidateColumnCount = false, // Checks each row immediately for column count
     ReturnEmptyForMissingColumn = false, // Allows for accessing invalid column names
     Aliases = null, // A collection of alternative column names
+    AllowNewLineInEnclosedFieldValues = false, // Respects new line (either \r\n or \n) characters inside field values enclosed in double quotes.
+    AllowBackSlashToEscapeQuote = false, // Allows the sequence "\"" to be a valid quoted value (in addition to the standard """")
+    AllowSingleQuoteToEncloseFieldValues = false, // Allows the single-quote character to be used to enclose field values
+    NewLine = Environment.NewLine // The new line string to use when multiline field values are read (Requires "AllowNewLineInEnclosedFieldValues" to be set to "true" for this to have any effect.)
 };
 ```
 
-More examples can be found in the tests.
+### Writing a CSV file
+
+```csharp
+var columnNames = new [] { "Id", "Name" };
+var rows = new [] 
+{
+    new [] { "0", "John Doe" },
+    new [] { "1", "Jane Doe" }
+};
+var csv = CsvWriter.WriteToText(columnNames, rows, ',');
+File.WriteAllText("people.csv", csv);
+/*
+Writes the following to the file:
+
+Id,Name
+0,John Doe
+1,Jane Doe
+*/
+```
 
 
 ## Build status

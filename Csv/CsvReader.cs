@@ -138,8 +138,7 @@ namespace Csv
                 var record = new ReadLine(headers, headerLookup, index, line, options);
                 if (options.AllowNewLineInEnclosedFieldValues)
                 {
-                    var lastField = record.RawSplitLine.Last();
-                    while (IsUnterminatedQuotedValue(lastField, options))
+                    while (record.RawSplitLine.Any(f => IsUnterminatedQuotedValue(f, options)))
                     {
                         var nextLine = reader.ReadLine();
                         if (nextLine == null)
@@ -250,7 +249,7 @@ namespace Csv
             {
                 quoteChar = '"';
             }
-            else if(options.AllowSingleQuoteToEncloseFieldValues && value.StartsWith("'"))
+            else if (options.AllowSingleQuoteToEncloseFieldValues && value.StartsWith("'"))
             {
                 quoteChar = '\'';
             }
