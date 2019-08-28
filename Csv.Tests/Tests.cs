@@ -316,7 +316,7 @@ namespace Csv.Tests
             var records = CsvReader.ReadFromText(input, options).ToArray();
             Assert.AreEqual(2, records.Length);
             Assert.AreEqual(3, records[0].ColumnCount);
-            Assert.AreEqual(3, records[0].ColumnCount);
+            Assert.AreEqual(3, records[1].ColumnCount);
         }
 
         [TestMethod]
@@ -340,7 +340,33 @@ namespace Csv.Tests
             var records = CsvReader.ReadFromText(input, options).ToArray();
             Assert.AreEqual(2, records.Length);
             Assert.AreEqual(3, records[0].ColumnCount);
+            Assert.AreEqual(3, records[1].ColumnCount);
+        }
+
+        [TestMethod]
+        public void WithNewLineWithEndingEmptyQuoted()
+        {
+            const string input = @"ID,Notes,User
+2,"" * Bullet 1,
+* Bullet 2,
+* Bullet 3,
+* Bullet 4,
+* Bullet 5,
+"",""""
+3,""* Bullet 1,
+* Bullet 2,
+* Bullet 3,
+* Bullet 4,
+* Bullet 5,
+"",Joe
+";
+            var options = new CsvOptions { AllowNewLineInEnclosedFieldValues = true };
+            var records = CsvReader.ReadFromText(input, options).ToArray();
+            Assert.AreEqual(2, records.Length);
             Assert.AreEqual(3, records[0].ColumnCount);
+            Assert.AreEqual(string.Empty, records[0][2]);
+            Assert.AreEqual(3, records[1].ColumnCount);
+            Assert.AreEqual("Joe", records[1][2]);
         }
 
         [TestMethod]

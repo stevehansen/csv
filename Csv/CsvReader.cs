@@ -258,7 +258,7 @@ namespace Csv
                 return false;
             }
 
-            var trailingQuotes = Regex.Match(value, $@"\\?{quoteChar}+$").Value;
+            var trailingQuotes = Regex.Match(value.Substring(1), $@"\\?{quoteChar}+$").Value;
             // if the first trailing quote is escaped, ignore it
             if (options.AllowBackSlashToEscapeQuote && trailingQuotes.StartsWith("\\"))
             {
