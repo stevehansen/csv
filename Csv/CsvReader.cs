@@ -202,26 +202,43 @@ namespace Csv
 
         private static Regex CreateRegex(CsvOptions options)
         {
-            var pattern = @"(?>(?(IQ)(?(ESC).(?<-ESC>)|\\(?<ESC>))|(?!))|(?(IQ)\k<QUOTE>(?<-IQ>)|(?<=^|{0})(?<QUOTE>[{1}])(?<IQ>))|(?(IQ).|[^{0}]))+|^(?={0})|(?<={0})(?={0})|(?<={0})$";
+            const string pattern = @"(?>(?(IQ)(?(ESC).(?<-ESC>)|\\(?<ESC>))|(?!))|(?(IQ)\k<QUOTE>(?<-IQ>)|(?<=^|{0})(?<QUOTE>[{1}])(?<IQ>))|(?(IQ).|[^{0}]))+|^(?={0})|(?<={0})(?={0})|(?<={0})$";
             var separator = Regex.Escape(options.Separator.ToString());
             var quoteChars = options.AllowSingleQuoteToEncloseFieldValues ? "\"'" : "\"";
             // Since netstandard1.0 doesn't include RegexOptions.Compiled, we include it by value (in case the target platform supports it)
-            var regexOptions = RegexOptions.Singleline | ((RegexOptions/*.Compiled*/)8);
+            const RegexOptions regexOptions = RegexOptions.Singleline | ((RegexOptions/*.Compiled*/)8);
             return new Regex(string.Format(pattern, separator, quoteChars), regexOptions);
         }
 
         private static string[] SplitLine(string line, CsvOptions options)
         {
             var matches = options.Splitter.Matches(line);
-            return matches.Cast<Match>()
-                .Select(m => m.Value)
-                .ToArray();
+            var parts = new List<string>(matches.Count);
+            var p = -1;
+            for (var i = 0; i < matches.Count; i++)
+            {
+                Match match = matches[i];
+                var value = match.Value;
+                if (p >= 0 && IsUnterminatedQuotedValue(parts[p], options))
+                {
+                    parts[p] += options.Separator + value;
+                }
+                else
+                {
+                    parts.Add(value);
+                    p++;
+                }
+            }
+
+            return parts.ToArray();
         }
 
         private static string[] Trim(string[] line, CsvOptions options)
         {
-            return line.Select(str =>
+            var trimmed = new string[line.Length];
+            for (var i = 0; i < line.Length; i++)
             {
+                var str = line[i];
                 if (options.TrimData)
                     str = str.Trim();
 
@@ -238,8 +255,10 @@ namespace Csv
                     str = str.Substring(1, str.Length - 2);
                 }
 
-                return str;
-            }).ToArray();
+                trimmed[i] = str;
+            }
+
+            return trimmed;
         }
 
         private static bool IsUnterminatedQuotedValue(string value, CsvOptions options)
@@ -292,7 +311,7 @@ namespace Csv
 
             public int ColumnCount => Line.Length;
 
-            public bool HasColumn(string name) => headerLookup.TryGetValue(name, out _);
+            public bool HasColumn(string name) => headerLookup.ContainsKey(name);
 
             internal string[] RawSplitLine
             {

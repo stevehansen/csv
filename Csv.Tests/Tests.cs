@@ -535,5 +535,14 @@ namespace Csv.Tests
         {
             CsvReader.ReadFromText("a;b;c\n\"\"\"\";a'b;'", new CsvOptions { Aliases = new[] { new[] { "b", "a" } } }).ToArray();
         }
+
+        [TestMethod]
+        public void TestInternalSeparatorAfterEscapedQuote()
+        {
+            CsvOptions options = new CsvOptions();
+            options.HeaderMode = HeaderMode.HeaderAbsent;
+            foreach (ICsvLine line in CsvReader.ReadFromText("one,\"two - a, two - b, \"\"two - c\"\", two - d\",three", options))
+                Assert.AreEqual(3, line.Values.Length);
+        }
     }
 }
