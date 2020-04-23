@@ -11,7 +11,11 @@ namespace Csv
     /// </summary>
     public static class CsvReader
     {
+#if NETCOREAPP3_1
+        private static readonly Dictionary<ValueTuple<char, bool>, Regex> splitterCache = new Dictionary<ValueTuple<char, bool>, Regex>();
+#else
         private static readonly Dictionary<Tuple<char, bool>, Regex> splitterCache = new Dictionary<Tuple<char, bool>, Regex>();
+#endif
         private static readonly object syncRoot = new object();
 
         /// <summary>
@@ -19,7 +23,7 @@ namespace Csv
         /// </summary>
         /// <param name="reader">The text reader to read the data from.</param>
         /// <param name="options">The optional options to use when reading.</param>
-        public static IEnumerable<ICsvLine> Read(TextReader reader, CsvOptions options = null)
+        public static IEnumerable<ICsvLine> Read(TextReader reader, CsvOptions? options = null)
         {
             if (reader == null)
                 throw new ArgumentNullException(nameof(reader));
@@ -32,7 +36,7 @@ namespace Csv
         /// </summary>
         /// <param name="stream">The stream to read the data from.</param>
         /// <param name="options">The optional options to use when reading.</param>
-        public static IEnumerable<ICsvLine> ReadFromStream(Stream stream, CsvOptions options = null)
+        public static IEnumerable<ICsvLine> ReadFromStream(Stream stream, CsvOptions? options = null)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
@@ -45,7 +49,7 @@ namespace Csv
         /// </summary>
         /// <param name="csv">The csv string to read the data from.</param>
         /// <param name="options">The optional options to use when reading.</param>
-        public static IEnumerable<ICsvLine> ReadFromText(string csv, CsvOptions options = null)
+        public static IEnumerable<ICsvLine> ReadFromText(string csv, CsvOptions? options = null)
         {
             if (csv == null)
                 throw new ArgumentNullException(nameof(csv));
@@ -53,7 +57,7 @@ namespace Csv
             return ReadFromTextImpl(csv, options);
         }
 
-        private static IEnumerable<ICsvLine> ReadFromStreamImpl(Stream stream, CsvOptions options)
+        private static IEnumerable<ICsvLine> ReadFromStreamImpl(Stream stream, CsvOptions? options)
         {
             using (var reader = new StreamReader(stream))
             {
@@ -62,7 +66,7 @@ namespace Csv
             }
         }
 
-        private static IEnumerable<ICsvLine> ReadFromTextImpl(string csv, CsvOptions options)
+        private static IEnumerable<ICsvLine> ReadFromTextImpl(string csv, CsvOptions? options)
         {
             using (var reader = new StringReader(csv))
             {
@@ -71,23 +75,22 @@ namespace Csv
             }
         }
 
-        private static IEnumerable<ICsvLine> ReadImpl(TextReader reader, CsvOptions options)
+        private static IEnumerable<ICsvLine> ReadImpl(TextReader reader, CsvOptions? options)
         {
-            if (options == null)
-                options = new CsvOptions();
+            // NOTE: Logic is copied in ReadImplAsync
+            options ??= new CsvOptions();
 
-            string line;
+            string? line;
             var index = 0;
-            string[] headers = null;
-            Dictionary<string, int> headerLookup = null;
-            var initalized = false;
+            string[]? headers = null;
+            Dictionary<string, int>? headerLookup = null;
             while ((line = reader.ReadLine()) != null)
             {
                 index++;
                 if (index <= options.RowsToSkip || options.SkipRow?.Invoke(line, index) == true)
                     continue;
 
-                if (!initalized)
+                if (headers == null || headerLookup == null)
                 {
                     InitializeOptions(line, options);
                     var skipInitialLine = options.HeaderMode == HeaderMode.HeaderPresent;
@@ -129,8 +132,6 @@ namespace Csv
                         }
                     }
 
-                    initalized = true;
-
                     if (skipInitialLine)
                         continue;
                 }
@@ -153,6 +154,141 @@ namespace Csv
                 yield return record;
             }
         }
+
+#if NETCOREAPP3_1
+        /// <summary>
+        /// Reads the lines from the reader.
+        /// </summary>
+        /// <param name="reader">The text reader to read the data from.</param>
+        /// <param name="options">The optional options to use when reading.</param>
+        public static IAsyncEnumerable<ICsvLine> ReadAsync(TextReader reader, CsvOptions? options = null)
+        {
+            if (reader == null)
+                throw new ArgumentNullException(nameof(reader));
+
+            return ReadImplAsync(reader, options);
+        }
+
+        /// <summary>
+        /// Reads the lines from the stream.
+        /// </summary>
+        /// <param name="stream">The stream to read the data from.</param>
+        /// <param name="options">The optional options to use when reading.</param>
+        public static IAsyncEnumerable<ICsvLine> ReadFromStreamAsync(Stream stream, CsvOptions? options = null)
+        {
+            if (stream == null)
+                throw new ArgumentNullException(nameof(stream));
+
+            static async IAsyncEnumerable<ICsvLine> Impl(Stream stream, CsvOptions? options)
+            {
+                using var reader = new StreamReader(stream);
+                await foreach (var line in ReadImplAsync(reader, options))
+                    yield return line;
+            }
+
+            return Impl(stream, options);
+        }
+
+        /// <summary>
+        /// Reads the lines from the csv string.
+        /// </summary>
+        /// <param name="csv">The csv string to read the data from.</param>
+        /// <param name="options">The optional options to use when reading.</param>
+        public static IAsyncEnumerable<ICsvLine> ReadFromTextAsync(string csv, CsvOptions? options = null)
+        {
+            if (csv == null)
+                throw new ArgumentNullException(nameof(csv));
+
+            static async IAsyncEnumerable<ICsvLine> Impl(string csv, CsvOptions? options)
+            {
+                using var reader = new StringReader(csv);
+                await foreach (var line in ReadImplAsync(reader, options))
+                    yield return line;
+            }
+
+            return Impl(csv, options);
+        }
+
+        private static async IAsyncEnumerable<ICsvLine> ReadImplAsync(TextReader reader, CsvOptions? options)
+        {
+            // NOTE: Logic is copied in ReadImpl
+            options ??= new CsvOptions();
+
+            string? line;
+            var index = 0;
+            string[]? headers = null;
+            Dictionary<string, int>? headerLookup = null;
+            while ((line = await reader.ReadLineAsync()) != null)
+            {
+                index++;
+                if (index <= options.RowsToSkip || options.SkipRow?.Invoke(line, index) == true)
+                    continue;
+
+                if (headers == null || headerLookup == null)
+                {
+                    InitializeOptions(line, options);
+                    var skipInitialLine = options.HeaderMode == HeaderMode.HeaderPresent;
+
+                    headers = skipInitialLine ? GetHeaders(line, options) : CreateDefaultHeaders(line, options);
+
+                    try
+                    {
+                        headerLookup = headers.Select((h, idx) => Tuple.Create(h, idx)).ToDictionary(h => h.Item1, h => h.Item2, options.Comparer);
+                    }
+                    catch (ArgumentException)
+                    {
+                        throw new InvalidOperationException("Duplicate headers detected in HeaderPresent mode. If you don't have a header you can set the HeaderMode to HeaderAbsent.");
+                    }
+
+                    var aliases = options.Aliases;
+                    if (aliases != null)
+                    {
+                        // NOTE: For each group we need at most 1 match (i.e. SingleOrDefault)
+                        foreach (var aliasGroup in aliases)
+                        {
+                            var groupIndex = -1;
+                            foreach (var alias in aliasGroup)
+                            {
+                                if (headerLookup.TryGetValue(alias, out var aliasIndex))
+                                {
+                                    if (groupIndex != -1)
+                                        throw new InvalidOperationException("Found multiple matches within alias group: " + string.Join(";", aliasGroup));
+
+                                    groupIndex = aliasIndex;
+                                }
+                            }
+
+                            if (groupIndex != -1)
+                            {
+                                foreach (var alias in aliasGroup)
+                                    headerLookup[alias] = groupIndex;
+                            }
+                        }
+                    }
+
+                    if (skipInitialLine)
+                        continue;
+                }
+
+                var record = new ReadLine(headers, headerLookup, index, line, options);
+                if (options.AllowNewLineInEnclosedFieldValues)
+                {
+                    while (record.RawSplitLine.Any(f => IsUnterminatedQuotedValue(f, options)))
+                    {
+                        var nextLine = await reader.ReadLineAsync();
+                        if (nextLine == null)
+                        {
+                            break;
+                        }
+                        line += options.NewLine + nextLine;
+                        record = new ReadLine(headers, headerLookup, index, line, options);
+                    }
+                }
+
+                yield return record;
+            }
+        }
+#endif
 
         private static char AutoDetectSeparator(string sampleLine)
         {
@@ -189,10 +325,14 @@ namespace Csv
                 options.Separator = AutoDetectSeparator(line);
 
 
-            Regex splitter;
+            Regex? splitter;
             lock (syncRoot)
             {
+#if NETCOREAPP3_1
+                var key = (options.Separator, options.AllowSingleQuoteToEncloseFieldValues);
+#else
                 var key = new Tuple<char, bool>(options.Separator, options.AllowSingleQuoteToEncloseFieldValues);
+#endif
                 if (!splitterCache.TryGetValue(key, out splitter))
                     splitterCache[key] = splitter = CreateRegex(options);
             }
@@ -291,8 +431,8 @@ namespace Csv
         {
             private readonly Dictionary<string, int> headerLookup;
             private readonly CsvOptions options;
-            private string[] rawSplitLine;
-            private string[] parsedLine;
+            private string[]? rawSplitLine;
+            private string[]? parsedLine;
 
             public ReadLine(string[] headers, Dictionary<string, int> headerLookup, int index, string raw, CsvOptions options)
             {
@@ -321,10 +461,7 @@ namespace Csv
                     {
                         lock (headerLookup)
                         {
-                            if (rawSplitLine == null)
-                            {
-                                rawSplitLine = SplitLine(Raw, options);
-                            }
+                            rawSplitLine ??= SplitLine(Raw, options);
                         }
                     }
                     return rawSplitLine;

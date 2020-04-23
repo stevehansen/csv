@@ -35,7 +35,7 @@ namespace Csv
         /// <summary>
         /// Gets or sets the comparer to use when looking up header names.
         /// </summary>
-        public IEqualityComparer<string> Comparer { get; set; }
+        public IEqualityComparer<string>? Comparer { get; set; }
 
         ///<summary>
         /// Gets or sets an indicator to the parser to expect a header row or not.
@@ -58,7 +58,7 @@ namespace Csv
         /// <remarks>
         /// A group with no matches is ignored.
         /// </remarks>
-        public ICollection<string[]> Aliases { get; set; }
+        public ICollection<string[]>? Aliases { get; set; }
 
         /// <summary>
         /// Respects new line (either \r\n or \n) characters inside field values enclosed in double quotes.
@@ -83,6 +83,8 @@ namespace Csv
         /// </remarks>
         public string NewLine { get; set; } = Environment.NewLine;
 
+#pragma warning disable 8618
         internal Regex Splitter { get; set; }
+#pragma warning restore 8618
     }
 }

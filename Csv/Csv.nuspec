@@ -7,18 +7,20 @@
     <authors>Steve Hansen</authors>
     <owners>Steve Hansen</owners>
     <projectUrl>https://github.com/stevehansen/csv/</projectUrl>
-	<repository type="git" url="https://github.com/stevehansen/csv/" />
+	  <repository type="git" url="https://github.com/stevehansen/csv/" />
     <iconUrl>https://raw.github.com/stevehansen/csv/master/icon.png</iconUrl>
     <licenseUrl>https://raw.github.com/stevehansen/csv/master/LICENSE</licenseUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>Really simple csv library.</description>
-    <copyright>Copyright © 2015-2017 Steve Hansen</copyright>
+    <copyright>Copyright © 2015-2020 Steve Hansen</copyright>
     <tags>csv</tags>
   </metadata>
   <files>
     <file src="..\Csv\bin\Release\Csv.dll" target="lib\portable-net45+win\Csv.dll" />
     <file src="..\Csv\bin\Release\Csv.xml" target="lib\portable-net45+win\Csv.xml" />
-    <file src="..\Csv\bin\Release\Csv.dll" target="lib\dotnet\Csv.dll" />
-    <file src="..\Csv\bin\Release\Csv.xml" target="lib\dotnet\Csv.xml" />
+    <file src="..\Csv\bin\Release\Csv.dll" target="lib\netstandard\Csv.dll" />
+    <file src="..\Csv\bin\Release\Csv.xml" target="lib\netstandard\Csv.xml" />
+    <file src="..\Csv\bin\Release\Csv.dll" target="lib\netcoreapp3.1\Csv.dll" />
+    <file src="..\Csv\bin\Release\Csv.xml" target="lib\netcoreapp3.1\Csv.xml" />
   </files>
 </package>
