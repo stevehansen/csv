@@ -11,7 +11,7 @@ namespace Csv
     /// </summary>
     public static class CsvReader
     {
-#if NETCOREAPP3_1
+#if NETCOREAPP3_1 || NETSTANDARD2_1
         private static readonly Dictionary<ValueTuple<char, bool>, Regex> splitterCache = new Dictionary<ValueTuple<char, bool>, Regex>();
 #else
         private static readonly Dictionary<Tuple<char, bool>, Regex> splitterCache = new Dictionary<Tuple<char, bool>, Regex>();
@@ -155,7 +155,7 @@ namespace Csv
             }
         }
 
-#if NETCOREAPP3_1
+#if NETCOREAPP3_1 || NETSTANDARD2_1
         /// <summary>
         /// Reads the lines from the reader.
         /// </summary>
@@ -328,7 +328,7 @@ namespace Csv
             Regex? splitter;
             lock (syncRoot)
             {
-#if NETCOREAPP3_1
+#if NETCOREAPP3_1 || NETSTANDARD2_1
                 var key = (options.Separator, options.AllowSingleQuoteToEncloseFieldValues);
 #else
                 var key = new Tuple<char, bool>(options.Separator, options.AllowSingleQuoteToEncloseFieldValues);
