@@ -9,18 +9,20 @@
     <projectUrl>https://github.com/stevehansen/csv/</projectUrl>
 	  <repository type="git" url="https://github.com/stevehansen/csv/" />
     <iconUrl>https://raw.github.com/stevehansen/csv/master/icon.png</iconUrl>
-    <licenseUrl>https://raw.github.com/stevehansen/csv/master/LICENSE</licenseUrl>
+    <license type="expression">MIT</license>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>Really simple csv library.</description>
     <copyright>Copyright © 2015-2020 Steve Hansen</copyright>
     <tags>csv</tags>
   </metadata>
   <files>
-    <file src="..\Csv\bin\Release\Csv.dll" target="lib\portable-net45+win\Csv.dll" />
-    <file src="..\Csv\bin\Release\Csv.xml" target="lib\portable-net45+win\Csv.xml" />
-    <file src="..\Csv\bin\Release\Csv.dll" target="lib\netstandard\Csv.dll" />
-    <file src="..\Csv\bin\Release\Csv.xml" target="lib\netstandard\Csv.xml" />
-    <file src="..\Csv\bin\Release\Csv.dll" target="lib\netcoreapp3.1\Csv.dll" />
-    <file src="..\Csv\bin\Release\Csv.xml" target="lib\netcoreapp3.1\Csv.xml" />
+    <file src="..\Csv\bin\Release\net40\Csv.dll" target="lib\net40\Csv.dll" />
+    <file src="..\Csv\bin\Release\net40\Csv.xml" target="lib\net40\Csv.xml" />
+    <file src="..\Csv\bin\Release\netstandard1.0\Csv.dll" target="lib\netstandard1.0\Csv.dll" />
+    <file src="..\Csv\bin\Release\netstandard1.0\Csv.xml" target="lib\netstandard1.0\Csv.xml" />
+    <file src="..\Csv\bin\Release\netstandard2.1\Csv.dll" target="lib\netstandard2.1\Csv.dll" />
+    <file src="..\Csv\bin\Release\netstandard2.1\Csv.xml" target="lib\netstandard2.1\Csv.xml" />
+    <file src="..\Csv\bin\Release\netcoreapp3.1\Csv.dll" target="lib\netcoreapp3.1\Csv.dll" />
+    <file src="..\Csv\bin\Release\netcoreapp3.1\Csv.xml" target="lib\netcoreapp3.1\Csv.xml" />
   </files>
 </package>

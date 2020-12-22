@@ -2,22 +2,22 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
+
+#if NETCOREAPP3_1 || NETSTANDARD2_1
+using MemoryText = System.ReadOnlyMemory<char>;
+using SpanText = System.ReadOnlySpan<char>;
+#else
+using MemoryText = System.String;
+using SpanText = System.String;
+#endif
 
 namespace Csv
 {
     /// <summary>
     /// Helper class to read csv (comma separated values) data.
     /// </summary>
-    public static class CsvReader
+    public static partial class CsvReader
     {
-#if NETCOREAPP3_1 || NETSTANDARD2_1
-        private static readonly Dictionary<ValueTuple<char, bool>, Regex> splitterCache = new Dictionary<ValueTuple<char, bool>, Regex>();
-#else
-        private static readonly Dictionary<Tuple<char, bool>, Regex> splitterCache = new Dictionary<Tuple<char, bool>, Regex>();
-#endif
-        private static readonly object syncRoot = new object();
-
         /// <summary>
         /// Reads the lines from the reader.
         /// </summary>
@@ -77,17 +77,22 @@ namespace Csv
 
         private static IEnumerable<ICsvLine> ReadImpl(TextReader reader, CsvOptions? options)
         {
-            // NOTE: Logic is copied in ReadImplAsync
+            // NOTE: Logic is copied in ReadImpl/ReadImplAsync/ReadFromMemory
             options ??= new CsvOptions();
 
             string? line;
             var index = 0;
-            string[]? headers = null;
+            MemoryText[]? headers = null;
             Dictionary<string, int>? headerLookup = null;
             while ((line = reader.ReadLine()) != null)
             {
                 index++;
+                
+#if NETCOREAPP3_1 || NETSTANDARD2_1
+                if (index <= options.RowsToSkip || options.SkipRow?.Invoke(line.AsMemory(), index) == true)
+#else
                 if (index <= options.RowsToSkip || options.SkipRow?.Invoke(line, index) == true)
+#endif
                     continue;
 
                 if (headers == null || headerLookup == null)
@@ -95,11 +100,13 @@ namespace Csv
                     InitializeOptions(line, options);
                     var skipInitialLine = options.HeaderMode == HeaderMode.HeaderPresent;
 
-                    headers = skipInitialLine ? GetHeaders(line, options) : CreateDefaultHeaders(line, options);
+                    headers = skipInitialLine ? GetHeaders(line.AsMemory(), options) : CreateDefaultHeaders(line, options);
 
                     try
                     {
-                        headerLookup = headers.Select((h, idx) => Tuple.Create(h, idx)).ToDictionary(h => h.Item1, h => h.Item2, options.Comparer);
+                        headerLookup = headers
+                            .Select((h, idx) => Tuple.Create(h, idx))
+                            .ToDictionary(h => h.Item1.AsString(), h => h.Item2, options.Comparer);
                     }
                     catch (ArgumentException)
                     {
@@ -139,7 +146,7 @@ namespace Csv
                 var record = new ReadLine(headers, headerLookup, index, line, options);
                 if (options.AllowNewLineInEnclosedFieldValues)
                 {
-                    while (record.RawSplitLine.Any(f => IsUnterminatedQuotedValue(f, options)))
+                    while (record.RawSplitLine.Any(f => IsUnterminatedQuotedValue(f.AsSpan(), options)))
                     {
                         var nextLine = reader.ReadLine();
                         if (nextLine == null)
@@ -211,17 +218,17 @@ namespace Csv
 
         private static async IAsyncEnumerable<ICsvLine> ReadImplAsync(TextReader reader, CsvOptions? options)
         {
-            // NOTE: Logic is copied in ReadImpl
+            // NOTE: Logic is copied in ReadImpl/ReadImplAsync/ReadFromMemory
             options ??= new CsvOptions();
 
             string? line;
             var index = 0;
-            string[]? headers = null;
+            MemoryText[]? headers = null;
             Dictionary<string, int>? headerLookup = null;
             while ((line = await reader.ReadLineAsync()) != null)
             {
                 index++;
-                if (index <= options.RowsToSkip || options.SkipRow?.Invoke(line, index) == true)
+                if (index <= options.RowsToSkip || options.SkipRow?.Invoke(line.AsMemory(), index) == true)
                     continue;
 
                 if (headers == null || headerLookup == null)
@@ -229,11 +236,13 @@ namespace Csv
                     InitializeOptions(line, options);
                     var skipInitialLine = options.HeaderMode == HeaderMode.HeaderPresent;
 
-                    headers = skipInitialLine ? GetHeaders(line, options) : CreateDefaultHeaders(line, options);
+                    headers = skipInitialLine ? GetHeaders(line.AsMemory(), options) : CreateDefaultHeaders(line, options);
 
                     try
                     {
-                        headerLookup = headers.Select((h, idx) => Tuple.Create(h, idx)).ToDictionary(h => h.Item1, h => h.Item2, options.Comparer);
+                        headerLookup = headers
+                            .Select((h, idx) => Tuple.Create(h, idx))
+                            .ToDictionary(h => h.Item1.AsString(), h => h.Item2, options.Comparer);
                     }
                     catch (ArgumentException)
                     {
@@ -273,13 +282,12 @@ namespace Csv
                 var record = new ReadLine(headers, headerLookup, index, line, options);
                 if (options.AllowNewLineInEnclosedFieldValues)
                 {
-                    while (record.RawSplitLine.Any(f => IsUnterminatedQuotedValue(f, options)))
+                    while (record.RawSplitLine.Any(f => IsUnterminatedQuotedValue(f.AsSpan(), options)))
                     {
                         var nextLine = await reader.ReadLineAsync();
                         if (nextLine == null)
-                        {
                             break;
-                        }
+                        
                         line += options.NewLine + nextLine;
                         record = new ReadLine(headers, headerLookup, index, line, options);
                     }
@@ -290,7 +298,7 @@ namespace Csv
         }
 #endif
 
-        private static char AutoDetectSeparator(string sampleLine)
+        private static char AutoDetectSeparator(SpanText sampleLine)
         {
             // NOTE: Try simple 'detection' of possible separator
             foreach (var ch in sampleLine)
@@ -302,66 +310,42 @@ namespace Csv
             return ',';
         }
 
-        private static string[] CreateDefaultHeaders(string line, CsvOptions options)
+        private static MemoryText[] CreateDefaultHeaders(SpanText line, CsvOptions options)
         {
-            var columnCount = options.Splitter.Matches(line);
+            var columnCount = options.Splitter.MatchesCount(line);
 
-            var headers = new string[columnCount.Count];
-
+            var headers = new MemoryText[columnCount];
             for (var i = 0; i < headers.Length; i++)
-                headers[i] = $"Column{i + 1}";
+                headers[i] = $"Column{i + 1}".AsMemory();
 
             return headers;
         }
 
-        private static string[] GetHeaders(string line, CsvOptions options)
+        private static MemoryText[] GetHeaders(MemoryText line, CsvOptions options)
         {
             return Trim(SplitLine(line, options), options);
         }
 
-        private static void InitializeOptions(string line, CsvOptions options)
+        private static void InitializeOptions(SpanText line, CsvOptions options)
         {
             if (options.Separator == '\0')
                 options.Separator = AutoDetectSeparator(line);
 
-
-            Regex? splitter;
-            lock (syncRoot)
-            {
-#if NETCOREAPP3_1 || NETSTANDARD2_1
-                var key = (options.Separator, options.AllowSingleQuoteToEncloseFieldValues);
-#else
-                var key = new Tuple<char, bool>(options.Separator, options.AllowSingleQuoteToEncloseFieldValues);
-#endif
-                if (!splitterCache.TryGetValue(key, out splitter))
-                    splitterCache[key] = splitter = CreateRegex(options);
-            }
-
-            options.Splitter = splitter;
+            options.Splitter = CsvLineSplitter.Get(options);
         }
 
-        private static Regex CreateRegex(CsvOptions options)
-        {
-            const string pattern = @"(?>(?(IQ)(?(ESC).(?<-ESC>)|\\(?<ESC>))|(?!))|(?(IQ)\k<QUOTE>(?<-IQ>)|(?<=^|{0})(?<QUOTE>[{1}])(?<IQ>))|(?(IQ).|[^{0}]))+|^(?={0})|(?<={0})(?={0})|(?<={0})$";
-            var separator = Regex.Escape(options.Separator.ToString());
-            var quoteChars = options.AllowSingleQuoteToEncloseFieldValues ? "\"'" : "\"";
-            // Since netstandard1.0 doesn't include RegexOptions.Compiled, we include it by value (in case the target platform supports it)
-            const RegexOptions regexOptions = RegexOptions.Singleline | ((RegexOptions/*.Compiled*/)8);
-            return new Regex(string.Format(pattern, separator, quoteChars), regexOptions);
-        }
-
-        private static string[] SplitLine(string line, CsvOptions options)
+        private static MemoryText[] SplitLine(MemoryText line, CsvOptions options)
         {
             var matches = options.Splitter.Matches(line);
-            var parts = new List<string>(matches.Count);
+            var parts = new List<MemoryText>(matches.Length);
             var p = -1;
-            for (var i = 0; i < matches.Count; i++)
+            // ReSharper disable once ForCanBeConvertedToForeach
+            for (var i = 0; i < matches.Length; i++)
             {
-                Match match = matches[i];
-                var value = match.Value;
-                if (p >= 0 && IsUnterminatedQuotedValue(parts[p], options))
+                var value = matches[i];
+                if (p >= 0 && IsUnterminatedQuotedValue(parts[p].AsSpan(), options))
                 {
-                    parts[p] += options.Separator + value;
+                    parts[p] = StringHelpers.Concat(parts[p], options.Separator.ToString(), value);
                 }
                 else
                 {
@@ -373,9 +357,9 @@ namespace Csv
             return parts.ToArray();
         }
 
-        private static string[] Trim(string[] line, CsvOptions options)
+        private static MemoryText[] Trim(MemoryText[] line, CsvOptions options)
         {
-            var trimmed = new string[line.Length];
+            var trimmed = new MemoryText[line.Length];
             for (var i = 0; i < line.Length; i++)
             {
                 var str = line[i];
@@ -384,16 +368,21 @@ namespace Csv
 
                 if (str.StartsWith("\"") && str.EndsWith("\"") && str.Length > 1)
                 {
+#if NETCOREAPP3_1 || NETSTANDARD2_1
+                    str = str[1..^1].Replace("\"\"", "\"");
+#else
                     str = str.Substring(1, str.Length - 2).Replace("\"\"", "\"");
+#endif
+
                     if (options.AllowBackSlashToEscapeQuote)
-                    {
                         str = str.Replace("\\\"", "\"");
-                    }
                 }
                 else if (options.AllowSingleQuoteToEncloseFieldValues && str.StartsWith("'") && str.EndsWith("'") && str.Length > 1)
-                {
+#if NETCOREAPP3_1 || NETSTANDARD2_1
+                    str = str[1..^1];
+#else
                     str = str.Substring(1, str.Length - 2);
-                }
+#endif
 
                 trimmed[i] = str;
             }
@@ -401,14 +390,17 @@ namespace Csv
             return trimmed;
         }
 
-        private static bool IsUnterminatedQuotedValue(string value, CsvOptions options)
+        private static bool IsUnterminatedQuotedValue(SpanText value, CsvOptions options)
         {
+            if (value.Length == 0)
+                return false;
+            
             char quoteChar;
-            if (value.StartsWith("\""))
+            if (value[0] == '"')
             {
                 quoteChar = '"';
             }
-            else if (options.AllowSingleQuoteToEncloseFieldValues && value.StartsWith("'"))
+            else if (options.AllowSingleQuoteToEncloseFieldValues && value[0] == '\'')
             {
                 quoteChar = '\'';
             }
@@ -417,7 +409,11 @@ namespace Csv
                 return false;
             }
 
-            var trailingQuotes = Regex.Match(value.Substring(1), $@"\\?{quoteChar}+$").Value;
+#if NETCOREAPP3_1 || NETSTANDARD2_1
+            var trailingQuotes = StringHelpers.RegexMatch(value[1..], $@"\\?{quoteChar}+$");
+#else
+            var trailingQuotes = StringHelpers.RegexMatch(value.Substring(1), $@"\\?{quoteChar}+$");
+#endif
             // if the first trailing quote is escaped, ignore it
             if (options.AllowBackSlashToEscapeQuote && trailingQuotes.StartsWith("\\"))
             {
@@ -431,19 +427,20 @@ namespace Csv
         {
             private readonly Dictionary<string, int> headerLookup;
             private readonly CsvOptions options;
-            private string[]? rawSplitLine;
-            private string[]? parsedLine;
+            private readonly MemoryText[] headers;
+            private MemoryText[]? rawSplitLine;
+            private MemoryText[]? parsedLine;
 
-            public ReadLine(string[] headers, Dictionary<string, int> headerLookup, int index, string raw, CsvOptions options)
+            public ReadLine(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, string raw, CsvOptions options)
             {
                 this.headerLookup = headerLookup;
                 this.options = options;
-                Headers = headers;
+                this.headers = headers;
                 Raw = raw;
                 Index = index;
             }
 
-            public string[] Headers { get; }
+            public string[] Headers => headers.Select(it => it.AsString()).ToArray();
 
             public string Raw { get; }
 
@@ -453,7 +450,7 @@ namespace Csv
 
             public bool HasColumn(string name) => headerLookup.ContainsKey(name);
 
-            internal string[] RawSplitLine
+            internal MemoryText[] RawSplitLine
             {
                 get
                 {
@@ -461,16 +458,20 @@ namespace Csv
                     {
                         lock (headerLookup)
                         {
+#if NETCOREAPP3_1 || NETSTANDARD2_1
+                            rawSplitLine ??= SplitLine(Raw.AsMemory(), options);
+#else
                             rawSplitLine ??= SplitLine(Raw, options);
+#endif
                         }
                     }
                     return rawSplitLine;
                 }
             }
 
-            public string[] Values => Line;
+            public string[] Values => Line.Select(it => it.AsString()).ToArray();
 
-            private string[] Line
+            private MemoryText[] Line
             {
                 get
                 {
@@ -502,7 +503,7 @@ namespace Csv
 
                     try
                     {
-                        return Line[index];
+                        return Line[index].AsString();
                     }
                     catch (IndexOutOfRangeException)
                     {
@@ -511,7 +512,7 @@ namespace Csv
                 }
             }
 
-            string ICsvLine.this[int index] => Line[index];
+            string ICsvLine.this[int index] => Line[index].AsString();
 
             public override string ToString()
             {

@@ -539,10 +539,24 @@ namespace Csv.Tests
         [TestMethod]
         public void TestInternalSeparatorAfterEscapedQuote()
         {
-            CsvOptions options = new CsvOptions();
+            var options = new CsvOptions();
             options.HeaderMode = HeaderMode.HeaderAbsent;
             foreach (ICsvLine line in CsvReader.ReadFromText("one,\"two - a, two - b, \"\"two - c\"\", two - d\",three", options))
                 Assert.AreEqual(3, line.Values.Length);
+        }
+
+        [TestMethod]
+        public void ReadFromMemory()
+        {
+            var lines = CsvReader.ReadFromMemory("A,B\nC,D".AsMemory()).ToArray();
+            Assert.AreEqual(1, lines.Length);
+            Assert.AreEqual(2, lines[0].Headers.Length);
+            Assert.AreEqual(2, lines[0].ColumnCount);
+            Assert.AreEqual(2, lines[0].Index);
+            Assert.AreEqual("C", lines[0][0].AsString());
+            Assert.AreEqual("C", lines[0]["A"].AsString());
+            Assert.AreEqual("D", lines[0][1].AsString());
+            Assert.AreEqual("D", lines[0]["B"].AsString());
         }
     }
 }
