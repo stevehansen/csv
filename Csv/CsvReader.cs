@@ -87,20 +87,17 @@ namespace Csv
             while ((line = reader.ReadLine()) != null)
             {
                 index++;
-                
-#if NETCOREAPP3_1 || NETSTANDARD2_1
-                if (index <= options.RowsToSkip || options.SkipRow?.Invoke(line.AsMemory(), index) == true)
-#else
-                if (index <= options.RowsToSkip || options.SkipRow?.Invoke(line, index) == true)
-#endif
+
+                var lineAsMemory = line.AsMemory();
+                if (index <= options.RowsToSkip || options.SkipRow?.Invoke(lineAsMemory, index) == true)
                     continue;
 
                 if (headers == null || headerLookup == null)
                 {
-                    InitializeOptions(line, options);
+                    InitializeOptions(lineAsMemory.AsSpan(), options);
                     var skipInitialLine = options.HeaderMode == HeaderMode.HeaderPresent;
 
-                    headers = skipInitialLine ? GetHeaders(line.AsMemory(), options) : CreateDefaultHeaders(line, options);
+                    headers = skipInitialLine ? GetHeaders(lineAsMemory, options) : CreateDefaultHeaders(lineAsMemory.AsSpan(), options);
 
                     try
                     {
@@ -150,9 +147,8 @@ namespace Csv
                     {
                         var nextLine = reader.ReadLine();
                         if (nextLine == null)
-                        {
                             break;
-                        }
+
                         line += options.NewLine + nextLine;
                         record = new ReadLine(headers, headerLookup, index, line, options);
                     }
@@ -228,20 +224,22 @@ namespace Csv
             while ((line = await reader.ReadLineAsync()) != null)
             {
                 index++;
-                if (index <= options.RowsToSkip || options.SkipRow?.Invoke(line.AsMemory(), index) == true)
+                
+                var lineAsMemory = line.AsMemory();
+                if (index <= options.RowsToSkip || options.SkipRow?.Invoke(lineAsMemory, index) == true)
                     continue;
 
                 if (headers == null || headerLookup == null)
                 {
-                    InitializeOptions(line, options);
+                    InitializeOptions(lineAsMemory.Span, options);
                     var skipInitialLine = options.HeaderMode == HeaderMode.HeaderPresent;
 
-                    headers = skipInitialLine ? GetHeaders(line.AsMemory(), options) : CreateDefaultHeaders(line, options);
+                    headers = skipInitialLine ? GetHeaders(lineAsMemory, options) : CreateDefaultHeaders(lineAsMemory.Span, options);
 
                     try
                     {
                         headerLookup = headers
-                            .Select((h, idx) => Tuple.Create(h, idx))
+                            .Select((h, idx) => (h, idx))
                             .ToDictionary(h => h.Item1.AsString(), h => h.Item2, options.Comparer);
                     }
                     catch (ArgumentException)
@@ -366,23 +364,30 @@ namespace Csv
                 if (options.TrimData)
                     str = str.Trim();
 
-                if (str.StartsWith("\"") && str.EndsWith("\"") && str.Length > 1)
+                if (str.Length > 1)
                 {
 #if NETCOREAPP3_1 || NETSTANDARD2_1
-                    str = str[1..^1].Replace("\"\"", "\"");
-#else
-                    str = str.Substring(1, str.Length - 2).Replace("\"\"", "\"");
-#endif
+                    if (str.Span[0] == '"' && str.Span[^0] == '"')
+                    {
+                        str = str[1..^1].Unescape('"', '"');
 
-                    if (options.AllowBackSlashToEscapeQuote)
-                        str = str.Replace("\\\"", "\"");
-                }
-                else if (options.AllowSingleQuoteToEncloseFieldValues && str.StartsWith("'") && str.EndsWith("'") && str.Length > 1)
-#if NETCOREAPP3_1 || NETSTANDARD2_1
-                    str = str[1..^1];
+                        if (options.AllowBackSlashToEscapeQuote)
+                            str = str.Unescape('\\', '"');
+                    }
+                    else if (options.AllowSingleQuoteToEncloseFieldValues && str.Span[0] == '\'' && str.Span[^0] == '\'')
+                        str = str[1..^1];
 #else
-                    str = str.Substring(1, str.Length - 2);
+                    if (str[0] == '"' && str[str.Length - 1] == '"')
+                    {
+                        str = str.Substring(1, str.Length - 2).Replace("\"\"", "\"");
+
+                        if (options.AllowBackSlashToEscapeQuote)
+                            str = str.Replace("\\\"", "\"");
+                    }
+                    else if (options.AllowSingleQuoteToEncloseFieldValues && str[0] == '\'' && str[str.Length - 1] == '\'')
+                        str = str.Substring(1, str.Length - 2);
 #endif
+                }
 
                 trimmed[i] = str;
             }
@@ -394,7 +399,7 @@ namespace Csv
         {
             if (value.Length == 0)
                 return false;
-            
+
             char quoteChar;
             if (value[0] == '"')
             {
@@ -417,7 +422,11 @@ namespace Csv
             // if the first trailing quote is escaped, ignore it
             if (options.AllowBackSlashToEscapeQuote && trailingQuotes.StartsWith("\\"))
             {
+#if NETCOREAPP3_1 || NETSTANDARD2_1
+                trailingQuotes = trailingQuotes[2..];
+#else
                 trailingQuotes = trailingQuotes.Substring(2);
+#endif
             }
             // the value is properly terminated if there are an odd number of unescaped quotes at the end
             return trailingQuotes.Length % 2 == 0;

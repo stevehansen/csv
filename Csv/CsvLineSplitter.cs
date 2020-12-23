@@ -60,7 +60,7 @@ namespace Csv
         public MemoryText[] Matches(MemoryText line)
         {
             var matches = splitter.Matches(line.AsString());
-            var values = new ReadOnlyMemory<char>[matches.Count];
+            var values = new MemoryText[matches.Count];
             for (var i = 0; i < matches.Count; i++)
                 values[i] = line.Slice(matches[i].Index, matches[i].Length);
             return values;

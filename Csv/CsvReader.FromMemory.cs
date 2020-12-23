@@ -87,9 +87,7 @@ namespace Csv
                     {
                         var nextLine = csv.ReadLine(ref position);
                         if (nextLine.IsEmpty)
-                        {
                             break;
-                        }
 
                         line = StringHelpers.Concat(line, options.NewLine, nextLine);
                         record = new ReadLineFromMemory(headers, headerLookup, index, line, options);
