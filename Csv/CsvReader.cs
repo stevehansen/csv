@@ -97,7 +97,7 @@ namespace Csv
                     InitializeOptions(lineAsMemory.AsSpan(), options);
                     var skipInitialLine = options.HeaderMode == HeaderMode.HeaderPresent;
 
-                    headers = skipInitialLine ? GetHeaders(lineAsMemory, options) : CreateDefaultHeaders(lineAsMemory.AsSpan(), options);
+                    headers = skipInitialLine ? GetHeaders(lineAsMemory, options) : CreateDefaultHeaders(lineAsMemory, options);
 
                     try
                     {
@@ -143,7 +143,9 @@ namespace Csv
                 var record = new ReadLine(headers, headerLookup, index, line, options);
                 if (options.AllowNewLineInEnclosedFieldValues)
                 {
-                    while (record.RawSplitLine.Any(f => IsUnterminatedQuotedValue(f.AsSpan(), options)))
+                    // TODO: Move to CsvLineSplitter?
+                    // TODO: Shouldn't we only check the last part?
+                    while (record.RawSplitLine.Any(f => CsvLineSplitter.IsUnterminatedQuotedValue(f.AsSpan(), options)))
                     {
                         var nextLine = reader.ReadLine();
                         if (nextLine == null)
@@ -234,7 +236,7 @@ namespace Csv
                     InitializeOptions(lineAsMemory.Span, options);
                     var skipInitialLine = options.HeaderMode == HeaderMode.HeaderPresent;
 
-                    headers = skipInitialLine ? GetHeaders(lineAsMemory, options) : CreateDefaultHeaders(lineAsMemory.Span, options);
+                    headers = skipInitialLine ? GetHeaders(lineAsMemory, options) : CreateDefaultHeaders(lineAsMemory, options);
 
                     try
                     {
@@ -280,7 +282,7 @@ namespace Csv
                 var record = new ReadLine(headers, headerLookup, index, line, options);
                 if (options.AllowNewLineInEnclosedFieldValues)
                 {
-                    while (record.RawSplitLine.Any(f => IsUnterminatedQuotedValue(f.AsSpan(), options)))
+                    while (record.RawSplitLine.Any(f => CsvLineSplitter.IsUnterminatedQuotedValue(f.AsSpan(), options)))
                     {
                         var nextLine = await reader.ReadLineAsync();
                         if (nextLine == null)
@@ -299,6 +301,7 @@ namespace Csv
         private static char AutoDetectSeparator(SpanText sampleLine)
         {
             // NOTE: Try simple 'detection' of possible separator
+            // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
             foreach (var ch in sampleLine)
             {
                 if (ch == ';' || ch == '\t')
@@ -308,9 +311,9 @@ namespace Csv
             return ',';
         }
 
-        private static MemoryText[] CreateDefaultHeaders(SpanText line, CsvOptions options)
+        private static MemoryText[] CreateDefaultHeaders(MemoryText line, CsvOptions options)
         {
-            var columnCount = options.Splitter.MatchesCount(line);
+            var columnCount = options.Splitter.Split(line, options).Count;
 
             var headers = new MemoryText[columnCount];
             for (var i = 0; i < headers.Length; i++)
@@ -332,33 +335,15 @@ namespace Csv
             options.Splitter = CsvLineSplitter.Get(options);
         }
 
-        private static MemoryText[] SplitLine(MemoryText line, CsvOptions options)
+        private static IList<MemoryText> SplitLine(MemoryText line, CsvOptions options)
         {
-            var matches = options.Splitter.Matches(line);
-            var parts = new List<MemoryText>(matches.Length);
-            var p = -1;
-            // ReSharper disable once ForCanBeConvertedToForeach
-            for (var i = 0; i < matches.Length; i++)
-            {
-                var value = matches[i];
-                if (p >= 0 && IsUnterminatedQuotedValue(parts[p].AsSpan(), options))
-                {
-                    parts[p] = StringHelpers.Concat(parts[p], options.Separator.ToString(), value);
-                }
-                else
-                {
-                    parts.Add(value);
-                    p++;
-                }
-            }
-
-            return parts.ToArray();
+            return options.Splitter.Split(line, options);
         }
 
-        private static MemoryText[] Trim(MemoryText[] line, CsvOptions options)
+        private static MemoryText[] Trim(IList<MemoryText> line, CsvOptions options)
         {
-            var trimmed = new MemoryText[line.Length];
-            for (var i = 0; i < line.Length; i++)
+            var trimmed = new MemoryText[line.Count]; // TODO: Mutate existing array?
+            for (var i = 0; i < line.Count; i++)
             {
                 var str = line[i];
                 if (options.TrimData)
@@ -367,14 +352,14 @@ namespace Csv
                 if (str.Length > 1)
                 {
 #if NETCOREAPP3_1 || NETSTANDARD2_1
-                    if (str.Span[0] == '"' && str.Span[^0] == '"')
+                    if (str.Span[0] == '"' && str.Span[^1] == '"')
                     {
                         str = str[1..^1].Unescape('"', '"');
 
                         if (options.AllowBackSlashToEscapeQuote)
                             str = str.Unescape('\\', '"');
                     }
-                    else if (options.AllowSingleQuoteToEncloseFieldValues && str.Span[0] == '\'' && str.Span[^0] == '\'')
+                    else if (options.AllowSingleQuoteToEncloseFieldValues && str.Span[0] == '\'' && str.Span[^1] == '\'')
                         str = str[1..^1];
 #else
                     if (str[0] == '"' && str[str.Length - 1] == '"')
@@ -395,49 +380,12 @@ namespace Csv
             return trimmed;
         }
 
-        private static bool IsUnterminatedQuotedValue(SpanText value, CsvOptions options)
-        {
-            if (value.Length == 0)
-                return false;
-
-            char quoteChar;
-            if (value[0] == '"')
-            {
-                quoteChar = '"';
-            }
-            else if (options.AllowSingleQuoteToEncloseFieldValues && value[0] == '\'')
-            {
-                quoteChar = '\'';
-            }
-            else
-            {
-                return false;
-            }
-
-#if NETCOREAPP3_1 || NETSTANDARD2_1
-            var trailingQuotes = StringHelpers.RegexMatch(value[1..], $@"\\?{quoteChar}+$");
-#else
-            var trailingQuotes = StringHelpers.RegexMatch(value.Substring(1), $@"\\?{quoteChar}+$");
-#endif
-            // if the first trailing quote is escaped, ignore it
-            if (options.AllowBackSlashToEscapeQuote && trailingQuotes.StartsWith("\\"))
-            {
-#if NETCOREAPP3_1 || NETSTANDARD2_1
-                trailingQuotes = trailingQuotes[2..];
-#else
-                trailingQuotes = trailingQuotes.Substring(2);
-#endif
-            }
-            // the value is properly terminated if there are an odd number of unescaped quotes at the end
-            return trailingQuotes.Length % 2 == 0;
-        }
-
         private sealed class ReadLine : ICsvLine
         {
             private readonly Dictionary<string, int> headerLookup;
             private readonly CsvOptions options;
             private readonly MemoryText[] headers;
-            private MemoryText[]? rawSplitLine;
+            private IList<MemoryText>? rawSplitLine;
             private MemoryText[]? parsedLine;
 
             public ReadLine(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, string raw, CsvOptions options)
@@ -459,21 +407,15 @@ namespace Csv
 
             public bool HasColumn(string name) => headerLookup.ContainsKey(name);
 
-            internal MemoryText[] RawSplitLine
+            internal IList<MemoryText> RawSplitLine
             {
                 get
                 {
-                    if (rawSplitLine == null)
-                    {
-                        lock (headerLookup)
-                        {
 #if NETCOREAPP3_1 || NETSTANDARD2_1
-                            rawSplitLine ??= SplitLine(Raw.AsMemory(), options);
+                    rawSplitLine ??= SplitLine(Raw.AsMemory(), options);
 #else
-                            rawSplitLine ??= SplitLine(Raw, options);
+                    rawSplitLine ??= SplitLine(Raw, options);
 #endif
-                        }
-                    }
                     return rawSplitLine;
                 }
             }
@@ -488,8 +430,8 @@ namespace Csv
                     {
                         var raw = RawSplitLine;
 
-                        if (options.ValidateColumnCount && raw.Length != Headers.Length)
-                            throw new InvalidOperationException($"Expected {Headers.Length}, got {raw.Length} columns.");
+                        if (options.ValidateColumnCount && raw.Count != Headers.Length)
+                            throw new InvalidOperationException($"Expected {Headers.Length}, got {raw.Count} columns.");
 
                         parsedLine = Trim(raw, options);
                     }

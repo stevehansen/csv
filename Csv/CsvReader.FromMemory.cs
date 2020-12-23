@@ -37,7 +37,7 @@ namespace Csv
                     InitializeOptions(line.Span, options);
                     var skipInitialLine = options.HeaderMode == HeaderMode.HeaderPresent;
 
-                    headers = skipInitialLine ? GetHeaders(line, options) : CreateDefaultHeaders(line.Span, options);
+                    headers = skipInitialLine ? GetHeaders(line, options) : CreateDefaultHeaders(line, options);
 
                     try
                     {
@@ -83,7 +83,7 @@ namespace Csv
                 var record = new ReadLineFromMemory(headers, headerLookup, index, line, options);
                 if (options.AllowNewLineInEnclosedFieldValues)
                 {
-                    while (record.RawSplitLine.Any(f => IsUnterminatedQuotedValue(f.AsSpan(), options)))
+                    while (record.RawSplitLine.Any(f => CsvLineSplitter.IsUnterminatedQuotedValue(f.AsSpan(), options)))
                     {
                         var nextLine = csv.ReadLine(ref position);
                         if (nextLine.IsEmpty)
@@ -102,7 +102,7 @@ namespace Csv
         {
             private readonly Dictionary<string, int> headerLookup;
             private readonly CsvOptions options;
-            private MemoryText[]? rawSplitLine;
+            private IList<MemoryText>? rawSplitLine;
             private MemoryText[]? parsedLine;
 
             public ReadLineFromMemory(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, CsvOptions options)
@@ -124,20 +124,7 @@ namespace Csv
 
             public bool HasColumn(string name) => headerLookup.ContainsKey(name);
 
-            internal MemoryText[] RawSplitLine
-            {
-                get
-                {
-                    if (rawSplitLine == null)
-                    {
-                        lock (headerLookup)
-                        {
-                            rawSplitLine ??= SplitLine(Raw, options);
-                        }
-                    }
-                    return rawSplitLine;
-                }
-            }
+            internal IList<MemoryText> RawSplitLine => rawSplitLine ??= SplitLine(Raw, options);
 
             public MemoryText[] Values => Line;
 
@@ -149,8 +136,8 @@ namespace Csv
                     {
                         var raw = RawSplitLine;
 
-                        if (options.ValidateColumnCount && raw.Length != Headers.Length)
-                            throw new InvalidOperationException($"Expected {Headers.Length}, got {raw.Length} columns.");
+                        if (options.ValidateColumnCount && raw.Count != Headers.Length)
+                            throw new InvalidOperationException($"Expected {Headers.Length}, got {raw.Count} columns.");
 
                         parsedLine = Trim(raw, options);
                     }
