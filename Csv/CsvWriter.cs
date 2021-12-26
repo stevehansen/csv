@@ -16,7 +16,8 @@ namespace Csv
         /// <param name="headers">The headers that should be used for the first line, determines the number of columns.</param>
         /// <param name="lines">The lines with data that should be written.</param>
         /// <param name="separator">The separator to use between columns (comma, semicolon, tab, ...)</param>
-        public static void Write(TextWriter writer, string[] headers, IEnumerable<string[]> lines, char separator = ',')
+        /// <param name="skipHeaderRow">Indicate whether the header row should be skipped, defaults to <c>false</c>.</param>
+        public static void Write(TextWriter writer, string[] headers, IEnumerable<string[]> lines, char separator = ',', bool skipHeaderRow = false)
         {
             if (writer == null)
                 throw new ArgumentNullException(nameof(writer));
@@ -26,7 +27,8 @@ namespace Csv
                 throw new ArgumentNullException(nameof(lines));
 
             var columnCount = headers.Length;
-            WriteLine(writer, headers, columnCount, separator);
+            if (!skipHeaderRow)
+                WriteLine(writer, headers, columnCount, separator);
             foreach (var line in lines)
                 WriteLine(writer, line, columnCount, separator);
         }
@@ -37,11 +39,12 @@ namespace Csv
         /// <param name="headers">The headers that should be used for the first line, determines the number of columns.</param>
         /// <param name="lines">The lines with data that should be written.</param>
         /// <param name="separator">The separator to use between columns (comma, semicolon, tab, ...)</param>
-        public static string WriteToText(string[] headers, IEnumerable<string[]> lines, char separator = ',')
+        /// <param name="skipHeaderRow">Indicate whether the header row should be skipped, defaults to <c>false</c>.</param>
+        public static string WriteToText(string[] headers, IEnumerable<string[]> lines, char separator = ',', bool skipHeaderRow = false)
         {
             using (var writer = new StringWriter())
             {
-                Write(writer, headers, lines, separator);
+                Write(writer, headers, lines, separator, skipHeaderRow);
 
                 return writer.ToString();
             }
