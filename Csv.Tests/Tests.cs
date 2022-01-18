@@ -558,5 +558,27 @@ namespace Csv.Tests
             Assert.AreEqual("D", lines[0][1].AsString());
             Assert.AreEqual("D", lines[0]["B"].AsString());
         }
+
+        [TestMethod]
+        [Ignore] // Needs to be fixed for https://github.com/stevehansen/csv/issues/35
+        public void BackslashBeforeQuote()
+        {
+            //"A";"B";"C"
+            //"A """;"B \"" ";"C"
+            var withSpace = CsvReader.ReadFromText("\"A\";\"B\";\"C\"\n\"A \"\"\";\"B \\\"\" \";\"C\"", new CsvOptions { AllowNewLineInEnclosedFieldValues = true, AllowBackSlashToEscapeQuote = false, AllowSingleQuoteToEncloseFieldValues = false }).ToArray();
+            Assert.AreEqual(1, withSpace.Length);
+            Assert.AreEqual(3, withSpace[0].Headers.Length);
+            Assert.AreEqual("A \"", withSpace[0][0]);
+            Assert.AreEqual("B \\\" ", withSpace[0][1]);
+            Assert.AreEqual("C", withSpace[0][2]);
+            //"A";"B";"C"
+            //"A """;"B \""";"C"
+            var withoutSpace = CsvReader.ReadFromText("\"A\";\"B\";\"C\"\n\"A \"\"\";\"B \\\"\"\";\"C\"", new CsvOptions { AllowNewLineInEnclosedFieldValues = true, AllowBackSlashToEscapeQuote = false, AllowSingleQuoteToEncloseFieldValues = false }).ToArray();
+            Assert.AreEqual(1, withoutSpace.Length);
+            Assert.AreEqual(3, withoutSpace[0].Headers.Length);
+            Assert.AreEqual("A \"", withoutSpace[0][0]);
+            Assert.AreEqual("B \\\"", withoutSpace[0][1]);
+            Assert.AreEqual("C", withoutSpace[0][2]);
+        }
     }
 }
