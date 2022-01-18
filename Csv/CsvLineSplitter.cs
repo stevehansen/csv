@@ -53,12 +53,15 @@ namespace Csv
 
         private static CsvLineSplitter Create(CsvOptions options)
         {
-            const string pattern = @"(?>(?(IQ)(?(ESC).(?<-ESC>)|\\(?<ESC>))|(?!))|(?(IQ)\k<QUOTE>(?<-IQ>)|(?<=^|{0})(?<QUOTE>[{1}])(?<IQ>))|(?(IQ).|[^{0}]))+|^(?={0})|(?<={0})(?={0})|(?<={0})$";
+            const string patternEscape = @"(?>(?(IQ)(?(ESC).(?<-ESC>)|\\(?<ESC>))|(?!))|(?(IQ)\k<QUOTE>(?<-IQ>)|(?<=^|{0})(?<QUOTE>[{1}])(?<IQ>))|(?(IQ).|[^{0}]))+|^(?={0})|(?<={0})(?={0})|(?<={0})$";
+            const string patternNoEscape = @"(?>(?(IQ)\k<QUOTE>(?<-IQ>)|(?<=^|{0})(?<QUOTE>[{1}])(?<IQ>))|(?(IQ).|[^{0}]))+|^(?={0})|(?<={0})(?={0})|(?<={0})$";
             var separator = Regex.Escape(options.Separator.ToString());
             var quoteChars = options.AllowSingleQuoteToEncloseFieldValues ? "\"'" : "\"";
             // Since netstandard1.0 doesn't include RegexOptions.Compiled, we include it by value (in case the target platform supports it)
             const RegexOptions regexOptions = RegexOptions.Singleline | ((RegexOptions/*.Compiled*/)8);
-            return new CsvLineSplitter(options.Separator, new Regex(string.Format(pattern, separator, quoteChars), regexOptions));
+            if (options.AllowBackSlashToEscapeQuote)
+                return new CsvLineSplitter(options.Separator, new Regex(string.Format(patternEscape, separator, quoteChars), regexOptions));
+            return new CsvLineSplitter(options.Separator, new Regex(string.Format(patternNoEscape, separator, quoteChars), regexOptions));
         }
 
         public static bool IsUnterminatedQuotedValue(SpanText value, CsvOptions options)
@@ -80,10 +83,11 @@ namespace Csv
                 return false;
             }
 
+            var regex = options.AllowBackSlashToEscapeQuote ? $@"\\?{quoteChar}+$" : $@"{quoteChar}+$";
 #if NETCOREAPP3_1 || NETSTANDARD2_1
-            var trailingQuotes = StringHelpers.RegexMatch(value[1..], $@"\\?{quoteChar}+$");
+            var trailingQuotes = StringHelpers.RegexMatch(value[1..], regex);
 #else
-            var trailingQuotes = StringHelpers.RegexMatch(value.Substring(1), $@"\\?{quoteChar}+$");
+            var trailingQuotes = StringHelpers.RegexMatch(value.Substring(1), regex);
 #endif
             // if the first trailing quote is escaped, ignore it
             if (options.AllowBackSlashToEscapeQuote && trailingQuotes.StartsWith("\\"))
