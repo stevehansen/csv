@@ -618,5 +618,130 @@ namespace Csv.Tests
             Assert.AreEqual("B \\\"", withoutSpace[0][1]);
             Assert.AreEqual("C", withoutSpace[0][2]);
         }
+        public const string smalldatabase = @"A,B,C,D
+1,34.47,Never,15
+2,44.17,gonna,28
+3,38.28,give,362
+4,11.26,you,3992
+5,96.73,up,65923
+6,73.12,Never,64
+7,89.64,gonna,95
+8,40.32,let,1537
+9,62.88,you,8463
+10,3.94,down,442";
+        [TestMethod]
+        [TestCategory("GetColumn")]
+        public void GetColumnTest_1()
+        {
+            var options = new CsvOptions();
+            var database = CsvReader.ReadFromText(smalldatabase, options);
+            var c1 = database.GetColumn(0);
+            CollectionAssert.AreEqual(c1.ToArray(), Enumerable.Range(1, 10).Select(x => x.ToString()).ToArray());
+        }
+        [TestMethod]
+        [TestCategory("GetColumn")]
+        public void GetColumnTest_2()
+        {
+            var options = new CsvOptions();
+            var database = CsvReader.ReadFromText(smalldatabase, options);
+            var c2 = database.GetColumn(1).ToArray();
+            Assert.AreEqual(10, c2.Length);
+        }
+        [TestMethod]
+        [TestCategory("GetColumn")]
+        public void GetColumnTest_3()
+        {
+            var options = new CsvOptions();
+            var database = CsvReader.ReadFromText(smalldatabase, options);
+            var c3 = database.GetColumn(2).ToArray();
+            string merged = c3.Aggregate("", (x, y) => x + " " + y);
+            Assert.AreEqual(" Never gonna give you up Never gonna let you down", merged);
+        }
+        [TestMethod]
+        [TestCategory("GetColumn<T>")]
+        public void GetColumnGenericTest_1()
+        {
+            var database = CsvReader.ReadFromText(smalldatabase);
+            var c1 = database.GetColumn(0, x => int.Parse(x)).ToArray();
+            CollectionAssert.AreEqual(c1, Enumerable.Range(1, 10).ToArray());
+        }
+        [TestMethod]
+        [TestCategory("GetColumn<T>")]
+        public void GetColumnGenericTest_2()
+        {
+            var database = CsvReader.ReadFromText(smalldatabase);
+            var c2 = database.GetColumn(1, x => double.Parse(x)).ToArray();
+            double sum = c2.Aggregate(0.0, (x, y) => x + y);
+            Assert.AreEqual(sum, 494.81);
+        }
+        [TestMethod]
+        [TestCategory("GetColumn<T>")]
+        public void GetColumnGenericTest_3()
+        {
+            var database = CsvReader.ReadFromText(smalldatabase);
+            var c4 = database.GetColumn(3, x => int.Parse(x) % 10).ToArray();
+            CollectionAssert.AreEqual(c4, new int[] { 5, 8, 2, 2, 3, 4, 5, 7, 3, 2 });
+        }
+        [TestMethod]
+        [TestCategory("GetBlock")]
+        public void GetBlockTest_1()
+        {
+            var database = CsvReader.ReadFromText(smalldatabase);
+            var block = database.GetBlock(2, 2).ToArray();
+            Assert.AreEqual(2, block.Length);
+            Assert.AreEqual(4, block[0].Headers.Length);
+            Assert.AreEqual("3", block[0]["A"]);
+            Assert.AreEqual("38.28", block[0]["B"]);
+            Assert.AreEqual("give", block[0]["C"]);
+            Assert.AreEqual("362", block[0]["D"]);
+            Assert.AreEqual("4", block[1]["A"]);
+            Assert.AreEqual("11.26", block[1]["B"]);
+            Assert.AreEqual("you", block[1]["C"]);
+            Assert.AreEqual("3992", block[1]["D"]);
+        }
+        [TestMethod]
+        [TestCategory("GetBlock")]
+        public void GetBlockTest_2()
+        {
+            var database = CsvReader.ReadFromText(smalldatabase);
+            var block = database.GetBlock(col_start: 2, col_length: 2).ToArray();
+            Assert.AreEqual(10, block.Length);
+            Assert.AreEqual(2, block[0].Headers.Length);
+            Assert.AreEqual("Never", block[0]["C"]);
+            Assert.AreEqual("gonna", block[1]["C"]);
+            Assert.AreEqual("give", block[2]["C"]);
+            Assert.AreEqual("you", block[3]["C"]);
+            Assert.AreEqual("up", block[4]["C"]);
+            Assert.AreEqual("Never", block[5]["C"]);
+            Assert.AreEqual("gonna", block[6]["C"]);
+            Assert.AreEqual("let", block[7]["C"]);
+            Assert.AreEqual("you", block[8]["C"]);
+            Assert.AreEqual("down", block[9]["C"]);
+            Assert.AreEqual("15", block[0]["D"]);
+            Assert.AreEqual("28", block[1]["D"]);
+            Assert.AreEqual("362", block[2]["D"]);
+            Assert.AreEqual("3992", block[3]["D"]);
+            Assert.AreEqual("65923", block[4]["D"]);
+            Assert.AreEqual("64", block[5]["D"]);
+            Assert.AreEqual("95", block[6]["D"]);
+            Assert.AreEqual("1537", block[7]["D"]);
+            Assert.AreEqual("8463", block[8]["D"]);
+            Assert.AreEqual("442", block[9]["D"]);
+        }
+        [TestMethod]
+        [TestCategory("GetBlock")]
+        public void GetBlockTest_3()
+        {
+            var database = CsvReader.ReadFromText(smalldatabase);
+            var block = database.GetBlock(row_start: 4, row_length: 3, col_start: 1, col_length: 2).ToArray();
+            Assert.AreEqual(3, block.Length);
+            Assert.AreEqual(2, block[0].Headers.Length);
+            Assert.AreEqual("96.73", block[0]["B"]);
+            Assert.AreEqual("up", block[0]["C"]);
+            Assert.AreEqual("73.12", block[1]["B"]);
+            Assert.AreEqual("Never", block[1]["C"]);
+            Assert.AreEqual("89.64", block[2]["B"]);
+            Assert.AreEqual("gonna", block[2]["C"]);
+        }
     }
 }
