@@ -379,14 +379,71 @@ namespace Csv
 
             return trimmed;
         }
+        /// <summary>
+        /// Gets a single column from the entire Enumeration of `ICsvLine`
+        /// </summary>
+        /// <param name="lines">The enumeration of `ICsvLine`</param>
+        /// <param name="columnNo">The index (starting from 0) of the the column 
+        /// to extract</param>
+        /// <param name="transform">The transformation function to parse 
+        /// from the string values</param>
+        /// <typeparam name="T">The datatype to transform 
+        /// the string inputs into</typeparam>
+        /// <returns>An enumeration of the transformed 
+        /// values of the selected column</returns>
+        public static IEnumerable<T> GetColumn<T>(this IEnumerable<ICsvLine> lines, int columnNo, Func<string, T> transform) => lines.Select(x => transform(x[columnNo]));
 
+        /// <summary>
+        /// Gets a single column from the entire Enumeration of `ICsvLine`
+        /// </summary>
+        /// <param name="lines">The enumeration of `ICsvLine`</param>
+        /// <param name="columnNo">The index (starting from 0) of the the 
+        /// column to extract</param>
+        /// <returns>An enumerations of the string values of 
+        /// the selected column</returns>
+        public static IEnumerable<string> GetColumn(this IEnumerable<ICsvLine> lines, int columnNo) => lines.GetColumn(columnNo, (x) => x);
+        /// <summary>
+        /// Gets a range/block of values from the given enumeration of `ICsvLine`
+        /// </summary>
+        /// <param name="lines">The enumeration of `ICsvLine`</param>
+        /// <param name="row_start">The index(starting from 0) of the rows to start the capture of. 
+        /// Default value is -1</param>
+        /// <param name="row_length">The number of rows to capture from the start row. If the default value
+        ///  (or any negative number) is passed, selects all the rows till the end</param>
+        /// <param name="col_start">The index(starting from 0) of all the columns to start the capture of.</param>
+        /// <param name="col_length">The number of rows to capture from the start column. 
+        /// If the default value (or any negative number) is passed, selects all the rows till the end</param>
+        /// <returns></returns>
+        public static IEnumerable<ICsvLine> GetBlock(this IEnumerable<ICsvLine> lines, int row_start = 0, int row_length = -1, int col_start = 0, int col_length = -1)
+        {
+            if (row_length == 0 || col_length == 0) return new ICsvLine[0];
+            if (row_length < 0)
+            {
+                return lines.Skip(row_start).Select(x => SubLine(x, col_start, col_length));
+            }
+            else
+            {
+                return lines.Skip(row_start).Take(row_length).Select(x => SubLine(x, col_start, col_length));
+            }
+            ICsvLine SubLine(ICsvLine line, int start, int length)
+            {
+                MemoryText[] headers;
+                if (length < 0 || start + length >= line.ColumnCount)
+                    headers = line.Headers.Skip(start).Select(x=>x.AsMemory()).ToArray();
+                else
+                    headers = line.Headers.Skip(start).Take(length).Select(x=>x.AsMemory()).ToArray();
+                MemoryText[] values = headers.Select(x => line[x.ToString()].AsMemory()).ToArray();
+                Dictionary<string, int> map = Enumerable.Range(0, headers.Length).ToDictionary(x => headers[x].ToString());
+                return new ReadLine(headers, map, line.Index, line.Raw, new CsvOptions()) { parsedLine = values };
+            }
+        }
         private sealed class ReadLine : ICsvLine
         {
             private readonly Dictionary<string, int> headerLookup;
             private readonly CsvOptions options;
             private readonly MemoryText[] headers;
             private IList<MemoryText>? rawSplitLine;
-            private MemoryText[]? parsedLine;
+            internal MemoryText[]? parsedLine;
 
             public ReadLine(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, string raw, CsvOptions options)
             {
