@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Csv
@@ -61,7 +62,20 @@ namespace Csv
         /// <param name="lines">The lines with data that should be written.</param>
         /// <param name="separator">The separator to use between columns (comma, semicolon, tab, ...)</param>
         /// <param name="skipHeaderRow">Indicate whether the header row should be skipped, defaults to <c>false</c>.</param>
-        public static async Task WriteAsync(TextWriter writer, string[] headers, IAsyncEnumerable<string[]> lines, char separator = ',', bool skipHeaderRow = false)
+        public static async Task WriteAsync(TextWriter writer, string[] headers, IAsyncEnumerable<string[]> lines, char separator = ',', bool skipHeaderRow = false) =>
+            await WriteAsync(writer, headers, lines, separator, skipHeaderRow, CancellationToken.None);
+
+        /// <summary>
+        /// Writes the lines to the writer.
+        /// </summary>
+        /// <param name="writer">The text writer to write the data to.</param>
+        /// <param name="headers">The headers that should be used for the first line, determines the number of columns.</param>
+        /// <param name="lines">The lines with data that should be written.</param>
+        /// <param name="separator">The separator to use between columns (comma, semicolon, tab, ...)</param>
+        /// <param name="skipHeaderRow">Indicate whether the header row should be skipped, defaults to <c>false</c>.</param>
+        /// <param name="cancellationToken">The cancellation token to use.</param>
+        public static async Task WriteAsync(TextWriter writer, string[] headers, IAsyncEnumerable<string[]> lines, char separator = ',', bool skipHeaderRow = false,
+            CancellationToken cancellationToken = default)
         {
             if (writer == null)
                 throw new ArgumentNullException(nameof(writer));
@@ -73,8 +87,19 @@ namespace Csv
             var columnCount = headers.Length;
             if (!skipHeaderRow)
                 WriteLine(writer, headers, columnCount, separator);
-            await foreach (var line in lines)
-                WriteLine(writer, line, columnCount, separator);
+            if (cancellationToken.CanBeCanceled)
+            {
+                await foreach (var line in lines.WithCancellation(cancellationToken))
+                {
+                    WriteLine(writer, line, columnCount, separator);
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+            }
+            else // no cancellation token, use fast iteration
+            {
+                await foreach (var line in lines)
+                    WriteLine(writer, line, columnCount, separator);
+            }
         }
 
         /// <summary>
@@ -112,6 +137,7 @@ namespace Csv
                     }
                     else if (cell.IndexOfAny(escapeChars) >= 0)
                         escape = true;
+
                     if (escape)
                         writer.Write('"');
                     writer.Write(cell);
@@ -119,6 +145,7 @@ namespace Csv
                         writer.Write('"');
                 }
             }
+
             writer.WriteLine();
         }
     }
