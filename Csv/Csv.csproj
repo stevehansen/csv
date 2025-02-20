@@ -5,7 +5,7 @@
     <Copyright>Copyright © Steve Hansen 2015-2020</Copyright>
     <AssemblyTitle>Csv</AssemblyTitle>
     <Authors>Steve Hansen</Authors>
-    <TargetFrameworks>net40;netstandard1.0;netstandard2.1;net8.0</TargetFrameworks>
+    <TargetFrameworks>net40;netstandard2.0;netstandard2.1;net8.0</TargetFrameworks>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <AssemblyName>Csv</AssemblyName>
     <PackageId>Csv</PackageId>
