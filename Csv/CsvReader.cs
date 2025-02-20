@@ -416,7 +416,11 @@ namespace Csv
         /// <returns></returns>
         public static IEnumerable<ICsvLine> GetBlock(this IEnumerable<ICsvLine> lines, int row_start = 0, int row_length = -1, int col_start = 0, int col_length = -1)
         {
+#if NET8_0_OR_GREATER
+            if (row_length == 0 || col_length == 0) return Array.Empty<ICsvLine>();
+#else
             if (row_length == 0 || col_length == 0) return new ICsvLine[0];
+#endif
             if (row_length < 0)
             {
                 return lines.Skip(row_start).Select(x => SubLine(x, col_start, col_length));

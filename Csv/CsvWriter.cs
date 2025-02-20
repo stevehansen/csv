@@ -105,7 +105,11 @@ namespace Csv
                 {
                     var escape = false;
                     var cell = data[i];
+#if NET8_0_OR_GREATER
+                    if (cell.Contains('"'))
+#else
                     if (cell.Contains("\""))
+#endif
                     {
                         escape = true;
                         cell = cell.Replace("\"", "\"\"");

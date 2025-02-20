@@ -90,7 +90,11 @@ namespace Csv
             var trailingQuotes = StringHelpers.RegexMatch(value.Substring(1), regex);
 #endif
             // if the first trailing quote is escaped, ignore it
+#if NET8_0_OR_GREATER
+            if (options.AllowBackSlashToEscapeQuote && trailingQuotes.StartsWith('\\'))
+#else
             if (options.AllowBackSlashToEscapeQuote && trailingQuotes.StartsWith("\\"))
+#endif
             {
 #if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
                 trailingQuotes = trailingQuotes[2..];
