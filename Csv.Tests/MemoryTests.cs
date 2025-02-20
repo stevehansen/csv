@@ -9,21 +9,21 @@ namespace Csv.Tests
         [TestMethod]
         public void StartsWith()
         {
-            Assert.AreEqual(false, "".AsMemory().StartsWith("test"));
-            Assert.AreEqual(false, "te".AsMemory().StartsWith("test"));
-            Assert.AreEqual(false, "something".AsMemory().StartsWith("test"));
-            Assert.AreEqual(true, "test".AsMemory().StartsWith("test"));
-            Assert.AreEqual(true, "testing".AsMemory().StartsWith("test"));
+            Assert.IsFalse("".AsMemory().StartsWith("test"));
+            Assert.IsFalse("te".AsMemory().StartsWith("test"));
+            Assert.IsFalse("something".AsMemory().StartsWith("test"));
+            Assert.IsTrue("test".AsMemory().StartsWith("test"));
+            Assert.IsTrue("testing".AsMemory().StartsWith("test"));
         }
 
         [TestMethod]
         public void EndsWith()
         {
-            Assert.AreEqual(false, "".AsMemory().EndsWith("test"));
-            Assert.AreEqual(false, "st".AsMemory().EndsWith("test"));
-            Assert.AreEqual(false, "something".AsMemory().EndsWith("test"));
-            Assert.AreEqual(true, "test".AsMemory().EndsWith("test"));
-            Assert.AreEqual(true, "pretest".AsMemory().EndsWith("test"));
+            Assert.IsFalse("".AsMemory().EndsWith("test"));
+            Assert.IsFalse("st".AsMemory().EndsWith("test"));
+            Assert.IsFalse("something".AsMemory().EndsWith("test"));
+            Assert.IsTrue("test".AsMemory().EndsWith("test"));
+            Assert.IsTrue("pretest".AsMemory().EndsWith("test"));
         }
 
         [TestMethod]
@@ -92,7 +92,7 @@ namespace Csv.Tests
             Assert.AreEqual(17, pos);
             Assert.AreEqual("g,h,i", thirdLine.AsString());
             var empty = csv.ReadLine(ref pos);
-            Assert.AreEqual(true, empty.IsEmpty);
+            Assert.IsTrue(empty.IsEmpty);
         }
 
         [TestMethod]
@@ -111,7 +111,7 @@ namespace Csv.Tests
             Assert.AreEqual(18, pos);
             Assert.AreEqual("g,h,i", thirdLine.AsString());
             var empty = csv.ReadLine(ref pos);
-            Assert.AreEqual(true, empty.IsEmpty);
+            Assert.IsTrue(empty.IsEmpty);
         }
     }
 }

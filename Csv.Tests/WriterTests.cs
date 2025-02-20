@@ -11,31 +11,31 @@ namespace Csv.Tests
         [TestMethod]
         public void EmptyCsv()
         {
-            CheckOutput(new string[0], Enumerable.Empty<string[]>(), "\r\n");
+            CheckOutput([], [], "\r\n");
         }
 
         [TestMethod]
         public void HeaderOnly()
         {
-            CheckOutput(new[] { "A", "B", "C" }, Enumerable.Empty<string[]>(), "A,B,C\r\n");
+            CheckOutput(["A", "B", "C"], [], "A,B,C\r\n");
         }
 
         [TestMethod]
         public void HeaderAndRows()
         {
-            CheckOutput(new[] { "A", "B", "C" }, Enumerable.Repeat(new[] { "X", "Y", "Z" }, 2), "A,B,C\r\nX,Y,Z\r\nX,Y,Z\r\n");
+            CheckOutput(["A", "B", "C"], Enumerable.Repeat(new[] { "X", "Y", "Z" }, 2), "A,B,C\r\nX,Y,Z\r\nX,Y,Z\r\n");
         }
 
         [TestMethod]
         public void HeaderAndRowsWithNotEnoughColumns()
         {
-            CheckOutput(new[] { "A", "B", "C" }, Enumerable.Repeat(new[] { "X" }, 2), "A,B,C\r\nX,,\r\nX,,\r\n");
+            CheckOutput(["A", "B", "C"], Enumerable.Repeat(new[] { "X" }, 2), "A,B,C\r\nX,,\r\nX,,\r\n");
         }
 
         [TestMethod]
         public void HeaderAndRowsEscapedValues()
         {
-            CheckOutput(new[] { "A,", "\"B", "C\"", "D'" }, Enumerable.Repeat(new[] { "X", "Y", "Z" }, 2), "\"A,\",\"\"\"B\",\"C\"\"\",\"D'\"\r\nX,Y,Z,\r\nX,Y,Z,\r\n");
+            CheckOutput(["A,", "\"B", "C\"", "D'"], Enumerable.Repeat(new[] { "X", "Y", "Z" }, 2), "\"A,\",\"\"\"B\",\"C\"\"\",\"D'\"\r\nX,Y,Z,\r\nX,Y,Z,\r\n");
         }
 
         //[TestMethod]
@@ -47,7 +47,7 @@ namespace Csv.Tests
         [TestMethod]
         public void DontEscapeCommaForCustomSeparator()
         {
-            CheckOutput(new[] { "A", "B", "C" }, Enumerable.Repeat(new[] { "X,", "Y;", "Z" }, 2), "A;B;C\r\nX,;\"Y;\";Z\r\nX,;\"Y;\";Z\r\n", ';');
+            CheckOutput(["A", "B", "C"], Enumerable.Repeat(new[] { "X,", "Y;", "Z" }, 2), "A;B;C\r\nX,;\"Y;\";Z\r\nX,;\"Y;\";Z\r\n", ';');
         }
 
         private static void CheckOutput(string[] headers, IEnumerable<string[]> lines, string expectedCsv, char separator = ',')

@@ -156,24 +156,22 @@ namespace Csv.Tests
 
         [TestMethod]
         [TestCategory("CsvOptions")]
-        [ExpectedException(typeof(InvalidOperationException))]
         public void ValidateColumnCount()
         {
             var lines = CsvReader.ReadFromText("A,B,C\n1,2").ToArray();
             Assert.AreEqual(1, lines.Length);
             Assert.AreEqual("1", lines[0]["A"]);
 
-            lines = CsvReader.ReadFromText("A,B,C\n1,2", new CsvOptions { ValidateColumnCount = true }).ToArray();
+            lines = [.. CsvReader.ReadFromText("A,B,C\n1,2", new CsvOptions { ValidateColumnCount = true })];
             Assert.AreEqual(1, lines.Length);
-            var a = lines[0]["A"];
+            Assert.ThrowsExactly<InvalidOperationException>(() => _ = lines[0]["A"]);
         }
 
         [TestMethod]
-        [ExpectedException(typeof(ArgumentOutOfRangeException))]
         public void InvalidHeader()
         {
             var lines = CsvReader.ReadFromText("A\n1").ToArray();
-            var b = lines[0]["B"];
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = lines[0]["B"]);
         }
 
         [TestMethod]
@@ -205,12 +203,9 @@ namespace Csv.Tests
 
         [TestMethod]
         [TestCategory("CsvOptions")]
-        [ExpectedException(typeof(InvalidOperationException))]
         public void AbsentHeaderWarnDuplicate()
         {
-            CsvReader.ReadFromText(",,\n4,5,6").ToArray();
-
-            Assert.Fail("Expected InvalidOperationException");
+            Assert.ThrowsExactly<InvalidOperationException>(() => _ = CsvReader.ReadFromText(",,\n4,5,6").ToArray());
         }
 
         [TestMethod]
@@ -263,12 +258,12 @@ namespace Csv.Tests
             Assert.AreEqual(1, lines.Length);
             Assert.AreEqual("", lines[0]["head2"]);
 
-            lines = CsvReader.ReadFromText("head1;head2;head3\ntext1;;text3").ToArray();
+            lines = [.. CsvReader.ReadFromText("head1;head2;head3\ntext1;;text3")];
             Assert.AreEqual(1, lines.Length);
             Assert.AreEqual("", lines[0]["head2"]);
             Assert.AreEqual("text3", lines[0]["head3"]);
 
-            lines = CsvReader.ReadFromText("head1;head2;head3\ntext1;\"\";text3").ToArray();
+            lines = [.. CsvReader.ReadFromText("head1;head2;head3\ntext1;\"\";text3")];
             Assert.AreEqual(1, lines.Length);
             Assert.AreEqual("", lines[0]["head2"]);
             Assert.AreEqual("text3", lines[0]["head3"]);
@@ -370,11 +365,10 @@ namespace Csv.Tests
         }
 
         [TestMethod]
-        [ExpectedException(typeof(ArgumentOutOfRangeException))]
         public void ThrowExceptionForUnknownHeaders()
         {
             var lines = CsvReader.ReadFromText("a;b\na;b").ToArray();
-            var c = lines[0]["c"];
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = lines[0]["c"]);
         }
 
         [TestMethod]
@@ -395,11 +389,10 @@ namespace Csv.Tests
         }
 
         [TestMethod]
-        [ExpectedException(typeof(InvalidOperationException))]
         public void ThrowExceptionForInvalidNumberOfCells()
         {
             var lines = CsvReader.ReadFromText("a;b;c\na;b").ToArray();
-            var c = lines[0]["c"];
+            Assert.ThrowsExactly<InvalidOperationException>(() => _ = lines[0]["c"]);
         }
 
         [TestMethod]
@@ -460,7 +453,7 @@ namespace Csv.Tests
             {
                 AllowBackSlashToEscapeQuote = false,
             };
-            lines = CsvReader.ReadFromText("a,b,c\n\"one\\\"two\",a'b,'", options).ToArray();
+            lines = [.. CsvReader.ReadFromText("a,b,c\n\"one\\\"two\",a'b,'", options)];
             Assert.AreEqual(1, lines.Length);
             Assert.AreEqual("one\\\"two", lines[0]["a"]);
             Assert.AreEqual("a'b", lines[0]["b"]);
@@ -517,7 +510,7 @@ namespace Csv.Tests
         [TestMethod]
         public void TestAlias()
         {
-            var lines = CsvReader.ReadFromText("a;b;c\n\"\"\"\";a'b;'", new CsvOptions { Aliases = new[] { new[] { "d", "a" } } }).ToArray();
+            var lines = CsvReader.ReadFromText("a;b;c\n\"\"\"\";a'b;'", new CsvOptions { Aliases = [["d", "a"]] }).ToArray();
             Assert.AreEqual(1, lines.Length);
             Assert.AreEqual("\"", lines[0]["a"]);
             Assert.AreEqual("\"", lines[0]["d"]);
@@ -531,7 +524,7 @@ namespace Csv.Tests
         [TestMethod]
         public void TestAliasAndValidateColumnCount()
         {
-            var lines = CsvReader.ReadFromText("a;b;c\n\"\"\"\";a'b;'", new CsvOptions { Aliases = new[] { new[] { "d", "a" } }, ValidateColumnCount = true }).ToArray();
+            var lines = CsvReader.ReadFromText("a;b;c\n\"\"\"\";a'b;'", new CsvOptions { Aliases = [["d", "a"]], ValidateColumnCount = true }).ToArray();
             Assert.AreEqual(1, lines.Length);
             Assert.AreEqual("\"", lines[0]["a"]);
             Assert.AreEqual("\"", lines[0]["d"]);
@@ -545,7 +538,7 @@ namespace Csv.Tests
         [TestMethod]
         public void TestAliasIgnoreMissingGroup()
         {
-            var lines = CsvReader.ReadFromText("a;b;c\n\"\"\"\";a'b;'", new CsvOptions { Aliases = new[] { new[] { "d", "e" } } }).ToArray();
+            var lines = CsvReader.ReadFromText("a;b;c\n\"\"\"\";a'b;'", new CsvOptions { Aliases = [["d", "e"]] }).ToArray();
             Assert.AreEqual(1, lines.Length);
             Assert.AreEqual("\"", lines[0]["a"]);
             Assert.AreEqual("a'b", lines[0]["b"]);
@@ -554,18 +547,19 @@ namespace Csv.Tests
         }
 
         [TestMethod]
-        [ExpectedException(typeof(InvalidOperationException))]
         public void TestAliasDuplicatesInGroup()
         {
-            CsvReader.ReadFromText("a;b;c\n\"\"\"\";a'b;'", new CsvOptions { Aliases = new[] { new[] { "b", "a" } } }).ToArray();
+            Assert.ThrowsExactly<InvalidOperationException>(() => _ = CsvReader.ReadFromText("a;b;c\n\"\"\"\";a'b;'", new CsvOptions { Aliases = [["b", "a"]] }).ToArray());
         }
 
         [TestMethod]
         public void TestInternalSeparatorAfterEscapedQuote()
         {
-            var options = new CsvOptions();
-            options.HeaderMode = HeaderMode.HeaderAbsent;
-            foreach (ICsvLine line in CsvReader.ReadFromText("one,\"two - a, two - b, \"\"two - c\"\", two - d\",three", options))
+            var options = new CsvOptions
+            {
+                HeaderMode = HeaderMode.HeaderAbsent,
+            };
+            foreach (var line in CsvReader.ReadFromText("one,\"two - a, two - b, \"\"two - c\"\", two - d\",three", options))
                 Assert.AreEqual(3, line.Values.Length);
         }
 
@@ -595,7 +589,7 @@ namespace Csv.Tests
             Assert.AreEqual("B \\\" ", withSpace[0][1]);
             Assert.AreEqual("C", withSpace[0][2]);
 
-            withSpace = CsvReader.ReadFromText("\"A\";\"B\";\"C\"\n\"A \"\"\";\"B \\\"\" \";\"C\"").ToArray();
+            withSpace = [.. CsvReader.ReadFromText("\"A\";\"B\";\"C\"\n\"A \"\"\";\"B \\\"\" \";\"C\"")];
             Assert.AreEqual(1, withSpace.Length);
             Assert.AreEqual(3, withSpace[0].Headers.Length);
             Assert.AreEqual("A \"", withSpace[0][0]);
@@ -611,7 +605,7 @@ namespace Csv.Tests
             Assert.AreEqual("B \\\"", withoutSpace[0][1]);
             Assert.AreEqual("C", withoutSpace[0][2]);
 
-            withoutSpace = CsvReader.ReadFromText("\"A\";\"B\";\"C\"\n\"A \"\"\";\"B \\\"\"\";\"C\"").ToArray();
+            withoutSpace = [.. CsvReader.ReadFromText("\"A\";\"B\";\"C\"\n\"A \"\"\";\"B \\\"\"\";\"C\"")];
             Assert.AreEqual(1, withoutSpace.Length);
             Assert.AreEqual(3, withoutSpace[0].Headers.Length);
             Assert.AreEqual("A \"", withoutSpace[0][0]);
@@ -654,7 +648,7 @@ namespace Csv.Tests
             var options = new CsvOptions();
             var database = CsvReader.ReadFromText(smalldatabase, options);
             var c3 = database.GetColumn(2).ToArray();
-            string merged = c3.Aggregate("", (x, y) => x + " " + y);
+            var merged = c3.Aggregate("", (x, y) => x + " " + y);
             Assert.AreEqual(" Never gonna give you up Never gonna let you down", merged);
         }
         [TestMethod]
@@ -671,8 +665,8 @@ namespace Csv.Tests
         {
             var database = CsvReader.ReadFromText(smalldatabase);
             var c2 = database.GetColumn(1, x => double.Parse(x)).ToArray();
-            double sum = c2.Aggregate(0.0, (x, y) => x + y);
-            Assert.AreEqual(sum, 494.81);
+            var sum = c2.Aggregate(0.0, (x, y) => x + y);
+            Assert.AreEqual(494.81, sum);
         }
         [TestMethod]
         [TestCategory("GetColumn<T>")]
