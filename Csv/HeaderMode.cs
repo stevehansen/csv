@@ -13,6 +13,6 @@ namespace Csv
         /// <summary>
         /// Indicates that the CSV file does not have a header row.
         /// </summary>
-        HeaderAbsent
+        HeaderAbsent,
     }
 }

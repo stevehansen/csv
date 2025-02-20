@@ -63,7 +63,7 @@ namespace Csv
         internal static MemoryText Unescape(this MemoryText str, char escape, char actual, int start = 0)
         {
             // We assume that most values will have none or one escaped sequence, so optimize for that
-            
+
             var span = str.Span;
             var maxLength = span.Length - 1;
             for (var i = start; i < maxLength; i++)
@@ -83,7 +83,7 @@ namespace Csv
                     return result;
                 }
             }
-            
+
             return str;
         }
 
@@ -91,7 +91,7 @@ namespace Csv
         {
             var begin = position;
             var end = position;
-            
+
             var span = reader.Span;
             for (; position < reader.Length; position++, end = position)
             {
@@ -101,7 +101,7 @@ namespace Csv
                         end = position - 1;
 
                     position++;
-                    
+
                     break;
                 }
             }

@@ -15,7 +15,7 @@ namespace Csv.Tests
             Assert.AreEqual(true, "test".AsMemory().StartsWith("test"));
             Assert.AreEqual(true, "testing".AsMemory().StartsWith("test"));
         }
-        
+
         [TestMethod]
         public void EndsWith()
         {

@@ -226,7 +226,7 @@ namespace Csv
             while ((line = await reader.ReadLineAsync()) != null)
             {
                 index++;
-                
+
                 var lineAsMemory = line.AsMemory();
                 if (index <= options.RowsToSkip || options.SkipRow?.Invoke(lineAsMemory, index) == true)
                     continue;
@@ -287,7 +287,7 @@ namespace Csv
                         var nextLine = await reader.ReadLineAsync();
                         if (nextLine == null)
                             break;
-                        
+
                         line += options.NewLine + nextLine;
                         record = new ReadLine(headers, headerLookup, index, line, options);
                     }
@@ -383,13 +383,13 @@ namespace Csv
         /// Gets a single column from the entire Enumeration of `ICsvLine`
         /// </summary>
         /// <param name="lines">The enumeration of `ICsvLine`</param>
-        /// <param name="columnNo">The index (starting from 0) of the the column 
+        /// <param name="columnNo">The index (starting from 0) of the the column
         /// to extract</param>
-        /// <param name="transform">The transformation function to parse 
+        /// <param name="transform">The transformation function to parse
         /// from the string values</param>
-        /// <typeparam name="T">The datatype to transform 
+        /// <typeparam name="T">The datatype to transform
         /// the string inputs into</typeparam>
-        /// <returns>An enumeration of the transformed 
+        /// <returns>An enumeration of the transformed
         /// values of the selected column</returns>
         public static IEnumerable<T> GetColumn<T>(this IEnumerable<ICsvLine> lines, int columnNo, Func<string, T> transform) => lines.Select(x => transform(x[columnNo]));
 
@@ -397,21 +397,21 @@ namespace Csv
         /// Gets a single column from the entire Enumeration of `ICsvLine`
         /// </summary>
         /// <param name="lines">The enumeration of `ICsvLine`</param>
-        /// <param name="columnNo">The index (starting from 0) of the the 
+        /// <param name="columnNo">The index (starting from 0) of the the
         /// column to extract</param>
-        /// <returns>An enumerations of the string values of 
+        /// <returns>An enumerations of the string values of
         /// the selected column</returns>
         public static IEnumerable<string> GetColumn(this IEnumerable<ICsvLine> lines, int columnNo) => lines.GetColumn(columnNo, (x) => x);
         /// <summary>
         /// Gets a range/block of values from the given enumeration of `ICsvLine`
         /// </summary>
         /// <param name="lines">The enumeration of `ICsvLine`</param>
-        /// <param name="row_start">The index(starting from 0) of the rows to start the capture of. 
+        /// <param name="row_start">The index(starting from 0) of the rows to start the capture of.
         /// Default value is -1</param>
         /// <param name="row_length">The number of rows to capture from the start row. If the default value
         ///  (or any negative number) is passed, selects all the rows till the end</param>
         /// <param name="col_start">The index(starting from 0) of all the columns to start the capture of.</param>
-        /// <param name="col_length">The number of rows to capture from the start column. 
+        /// <param name="col_length">The number of rows to capture from the start column.
         /// If the default value (or any negative number) is passed, selects all the rows till the end</param>
         /// <returns></returns>
         public static IEnumerable<ICsvLine> GetBlock(this IEnumerable<ICsvLine> lines, int row_start = 0, int row_length = -1, int col_start = 0, int col_length = -1)
