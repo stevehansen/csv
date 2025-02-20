@@ -5,7 +5,7 @@
     <Copyright>Copyright © Steve Hansen 2015-2020</Copyright>
     <AssemblyTitle>Csv</AssemblyTitle>
     <Authors>Steve Hansen</Authors>
-    <TargetFrameworks>net40;netstandard1.0;netstandard2.1;netcoreapp3.1</TargetFrameworks>
+    <TargetFrameworks>net40;netstandard1.0;netstandard2.1;net8.0</TargetFrameworks>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <AssemblyName>Csv</AssemblyName>
     <PackageId>Csv</PackageId>
@@ -42,7 +42,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
   </ItemGroup>
 
 </Project>

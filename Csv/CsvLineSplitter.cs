@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
-#if NETCOREAPP3_1 || NETSTANDARD2_1
+#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
 using MemoryText = System.ReadOnlyMemory<char>;
 using SpanText = System.ReadOnlySpan<char>;
 #else
@@ -17,7 +17,7 @@ namespace Csv
     /// </summary>
     internal sealed class CsvLineSplitter
     {
-#if NETCOREAPP3_1 || NETSTANDARD2_1
+#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
         private static readonly Dictionary<(char Separator, bool AllowSingleQuoteToEncloseFieldValues), CsvLineSplitter> splitterCache = new Dictionary<(char, bool), CsvLineSplitter>();
 #else
         private static readonly Dictionary<Tuple<char, bool>, CsvLineSplitter> splitterCache = new Dictionary<Tuple<char, bool>, CsvLineSplitter>();
@@ -39,7 +39,7 @@ namespace Csv
             CsvLineSplitter? splitter;
             lock (syncRoot)
             {
-#if NETCOREAPP3_1 || NETSTANDARD2_1
+#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
                 var key = (options.Separator, options.AllowSingleQuoteToEncloseFieldValues);
 #else
                 var key = Tuple.Create(options.Separator, options.AllowSingleQuoteToEncloseFieldValues);
@@ -84,7 +84,7 @@ namespace Csv
             }
 
             var regex = options.AllowBackSlashToEscapeQuote ? $@"\\?{quoteChar}+$" : $@"{quoteChar}+$";
-#if NETCOREAPP3_1 || NETSTANDARD2_1
+#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
             var trailingQuotes = StringHelpers.RegexMatch(value[1..], regex);
 #else
             var trailingQuotes = StringHelpers.RegexMatch(value.Substring(1), regex);
@@ -92,7 +92,7 @@ namespace Csv
             // if the first trailing quote is escaped, ignore it
             if (options.AllowBackSlashToEscapeQuote && trailingQuotes.StartsWith("\\"))
             {
-#if NETCOREAPP3_1 || NETSTANDARD2_1
+#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
                 trailingQuotes = trailingQuotes[2..];
 #else
                 trailingQuotes = trailingQuotes.Substring(2);
@@ -110,7 +110,7 @@ namespace Csv
             // ReSharper disable once ForCanBeConvertedToForeach
             for (var i = 0; i < matches.Count; i++)
             {
-#if NETCOREAPP3_1 || NETSTANDARD2_1
+#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
                 var value = line.Slice(matches[i].Index, matches[i].Length);
 #else
                 var value = matches[i].Value;

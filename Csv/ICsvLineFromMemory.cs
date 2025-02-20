@@ -1,4 +1,4 @@
-#if NETCOREAPP3_1 || NETSTANDARD2_1
+#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
 
 using MemoryText = System.ReadOnlyMemory<char>;
 

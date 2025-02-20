@@ -19,7 +19,7 @@ namespace Csv
         /// <summary>
         /// Gets or sets a function to skip the current row based on its raw string value or 1-based index. Skips empty rows and rows starting with # by default.
         /// </summary>
-#if NETCOREAPP3_1 || NETSTANDARD2_1
+#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
         public Func<ReadOnlyMemory<char>, int, bool> SkipRow { get; set; } = (row, idx) => row.Span.IsEmpty || row.Span[0] == '#';
 #else
         public Func<string, int, bool> SkipRow { get; set; } = (row, idx) => string.IsNullOrEmpty(row) || row[0] == '#';
