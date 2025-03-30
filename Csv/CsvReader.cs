@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 
 #if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
 using MemoryText = System.ReadOnlyMemory<char>;
@@ -59,6 +60,16 @@ namespace Csv
 
         private static IEnumerable<ICsvLine> ReadFromStreamImpl(Stream stream, CsvOptions? options)
         {
+#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
+            // Temporarily disabling the optimized stream approach
+            /*
+            if (stream.Length > 1024 * 1024) // 1MB threshold
+            {
+                // Optimized implementation here...
+            }
+            */
+#endif
+
             using (var reader = new StreamReader(stream))
             {
                 foreach (var line in ReadImpl(reader, options))
@@ -68,12 +79,52 @@ namespace Csv
 
         private static IEnumerable<ICsvLine> ReadFromTextImpl(string csv, CsvOptions? options)
         {
+#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
+            // Temporarily use the standard TextReader approach to ensure compatibility
             using (var reader = new StringReader(csv))
             {
                 foreach (var line in ReadImpl(reader, options))
                     yield return line;
             }
+#else
+            using (var reader = new StringReader(csv))
+            {
+                foreach (var line in ReadImpl(reader, options))
+                    yield return line;
+            }
+#endif
         }
+
+#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
+        /// <summary>
+        /// Adapter to convert ICsvLineFromMemory to ICsvLine
+        /// </summary>
+        private sealed class MemoryToStringLine : ICsvLine
+        {
+            private readonly ICsvLineFromMemory memoryLine;
+
+            public MemoryToStringLine(ICsvLineFromMemory memoryLine)
+            {
+                this.memoryLine = memoryLine;
+            }
+
+            public string[] Headers => memoryLine.Headers.Select(h => h.ToString()).ToArray();
+
+            public string Raw => memoryLine.Raw.ToString();
+
+            public int Index => memoryLine.Index;
+
+            public int ColumnCount => memoryLine.ColumnCount;
+
+            public bool HasColumn(string name) => memoryLine.HasColumn(name);
+
+            public string[] Values => memoryLine.Values.Select(v => v.ToString()).ToArray();
+
+            public string this[string name] => memoryLine[name].ToString();
+
+            public string this[int index] => memoryLine[index].ToString();
+        }
+#endif
 
         private static IEnumerable<ICsvLine> ReadImpl(TextReader reader, CsvOptions? options)
         {
@@ -84,8 +135,15 @@ namespace Csv
             var index = 0;
             MemoryText[]? headers = null;
             Dictionary<string, int>? headerLookup = null;
+
+#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
+            // Temporarily removing optimized buffering for compatibility
             while ((line = reader.ReadLine()) != null)
             {
+#else
+            while ((line = reader.ReadLine()) != null)
+            {
+#endif
                 index++;
 
                 var lineAsMemory = line.AsMemory();
@@ -101,9 +159,15 @@ namespace Csv
 
                     try
                     {
+#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
+                        headerLookup = headers
+                            .Select((h, idx) => (h, idx))
+                            .ToDictionary(h => h.Item1.AsString(), h => h.Item2, options.Comparer);
+#else
                         headerLookup = headers
                             .Select((h, idx) => Tuple.Create(h, idx))
                             .ToDictionary(h => h.Item1.AsString(), h => h.Item2, options.Comparer);
+#endif
                     }
                     catch (ArgumentException)
                     {
@@ -143,9 +207,14 @@ namespace Csv
                 var record = new ReadLine(headers, headerLookup, index, line, options);
                 if (options.AllowNewLineInEnclosedFieldValues)
                 {
+#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
+                    // Using the original implementation for now
+                    while (record.RawSplitLine.Any(f => CsvLineSplitter.IsUnterminatedQuotedValue(f.AsSpan(), options)))
+#else
                     // TODO: Move to CsvLineSplitter?
                     // TODO: Shouldn't we only check the last part?
                     while (record.RawSplitLine.Any(f => CsvLineSplitter.IsUnterminatedQuotedValue(f.AsSpan(), options)))
+#endif
                     {
                         var nextLine = reader.ReadLine();
                         if (nextLine == null)
@@ -153,6 +222,7 @@ namespace Csv
 
                         line += options.NewLine + nextLine;
                         record = new ReadLine(headers, headerLookup, index, line, options);
+
                     }
                 }
 
@@ -206,9 +276,11 @@ namespace Csv
 
             static async IAsyncEnumerable<ICsvLine> Impl(string csv, CsvOptions? options)
             {
-                using var reader = new StringReader(csv);
-                await foreach (var line in ReadImplAsync(reader, options))
-                    yield return line;
+                // For string-based CSV, we can use the faster memory-based approach
+                foreach (var line in ReadFromMemory(csv.AsMemory(), options))
+                {
+                    yield return new MemoryToStringLine(line);
+                }
             }
 
             return Impl(csv, options);
@@ -282,7 +354,18 @@ namespace Csv
                 var record = new ReadLine(headers, headerLookup, index, line, options);
                 if (options.AllowNewLineInEnclosedFieldValues)
                 {
-                    while (record.RawSplitLine.Any(f => CsvLineSplitter.IsUnterminatedQuotedValue(f.AsSpan(), options)))
+                    // Optimized check for unterminated quotes
+                    bool hasUnterminatedQuote = false;
+                    foreach (var field in record.RawSplitLine)
+                    {
+                        if (CsvLineSplitter.IsUnterminatedQuotedValue(field.AsSpan(), options))
+                        {
+                            hasUnterminatedQuote = true;
+                            break;
+                        }
+                    }
+
+                    while (hasUnterminatedQuote)
                     {
                         var nextLine = await reader.ReadLineAsync();
                         if (nextLine == null)
@@ -290,6 +373,17 @@ namespace Csv
 
                         line += options.NewLine + nextLine;
                         record = new ReadLine(headers, headerLookup, index, line, options);
+
+                        // Recheck for unterminated quotes
+                        hasUnterminatedQuote = false;
+                        foreach (var field in record.RawSplitLine)
+                        {
+                            if (CsvLineSplitter.IsUnterminatedQuotedValue(field.AsSpan(), options))
+                            {
+                                hasUnterminatedQuote = true;
+                                break;
+                            }
+                        }
                     }
                 }
 
@@ -300,6 +394,44 @@ namespace Csv
 
         private static char AutoDetectSeparator(SpanText sampleLine)
         {
+#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
+            // Try to determine the best separator by analyzing frequency
+            ReadOnlySpan<char> candidates = stackalloc char[] { ',', ';', '\t', '|' };
+
+            // Count occurrences for each candidate
+            Span<int> counts = stackalloc int[candidates.Length];
+
+            for (int i = 0; i < sampleLine.Length; i++)
+            {
+                for (int j = 0; j < candidates.Length; j++)
+                {
+                    if (sampleLine[i] == candidates[j])
+                    {
+                        counts[j]++;
+                    }
+                }
+            }
+
+            // Find the most common separator
+            int maxCount = 0;
+            int maxIndex = -1;
+
+            for (int i = 0; i < counts.Length; i++)
+            {
+                if (counts[i] > maxCount)
+                {
+                    maxCount = counts[i];
+                    maxIndex = i;
+                }
+            }
+
+            if (maxCount > 0)
+            {
+                return candidates[maxIndex];
+            }
+
+            return ','; // Default if nothing found
+#else
             // NOTE: Try simple 'detection' of possible separator
             // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
             foreach (var ch in sampleLine)
@@ -309,6 +441,7 @@ namespace Csv
             }
 
             return ',';
+#endif
         }
 
         private static MemoryText[] CreateDefaultHeaders(MemoryText line, CsvOptions options)
@@ -433,9 +566,9 @@ namespace Csv
             {
                 MemoryText[] headers;
                 if (length < 0 || start + length >= line.ColumnCount)
-                    headers = line.Headers.Skip(start).Select(x=>x.AsMemory()).ToArray();
+                    headers = line.Headers.Skip(start).Select(x => x.AsMemory()).ToArray();
                 else
-                    headers = line.Headers.Skip(start).Take(length).Select(x=>x.AsMemory()).ToArray();
+                    headers = line.Headers.Skip(start).Take(length).Select(x => x.AsMemory()).ToArray();
                 MemoryText[] values = headers.Select(x => line[x.ToString()].AsMemory()).ToArray();
                 Dictionary<string, int> map = Enumerable.Range(0, headers.Length).ToDictionary(x => headers[x].ToString());
                 return new ReadLine(headers, map, line.Index, line.Raw, new CsvOptions()) { parsedLine = values };
@@ -473,7 +606,11 @@ namespace Csv
                 get
                 {
 #if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
-                    rawSplitLine ??= SplitLine(Raw.AsMemory(), options);
+                    if (rawSplitLine == null)
+                    {
+                        // Use optimized span splitter
+                        rawSplitLine = options.Splitter.Split(Raw.AsMemory(), options);
+                    }
 #else
                     rawSplitLine ??= SplitLine(Raw, options);
 #endif

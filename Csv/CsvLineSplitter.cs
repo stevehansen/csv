@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 
 #if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
@@ -27,11 +29,18 @@ namespace Csv
 
         private readonly char separator;
         private readonly Regex splitter;
+#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
+        private readonly bool useSpanSplitter;
+#endif
 
         private CsvLineSplitter(char separator, Regex splitter)
         {
             this.separator = separator;
             this.splitter = splitter;
+#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
+            // Default to using the span-based splitter for better performance
+            this.useSpanSplitter = true;
+#endif
         }
 
         public static CsvLineSplitter Get(CsvOptions options)
@@ -83,12 +92,25 @@ namespace Csv
                 return false;
             }
 
-            var regex = options.AllowBackSlashToEscapeQuote ? $@"\\?{quoteChar}+$" : $@"{quoteChar}+$";
 #if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
-            var trailingQuotes = StringHelpers.RegexMatch(value[1..], regex);
+            // Optimized check for unterminated quoted value using spans directly
+            if (IsUnterminatedQuotedValueFast(value, quoteChar, options.AllowBackSlashToEscapeQuote))
+                return true;
+
+            // Fall back to the regex-based check for complex cases
+            var regex = options.AllowBackSlashToEscapeQuote ? $@"\\?{quoteChar}+$" : $@"{quoteChar}+$";
+            var trailingQuotes = StringHelpers.RegexMatch(value.Slice(1), regex);
+
+            // If the first trailing quote is escaped, ignore it
+            if (options.AllowBackSlashToEscapeQuote && trailingQuotes.StartsWith('\\'))
+            {
+                trailingQuotes = trailingQuotes.AsSpan(2).ToString();
+            }
+            // the value is properly terminated if there are an odd number of unescaped quotes at the end
+            return trailingQuotes.Length % 2 == 0;
 #else
+            var regex = options.AllowBackSlashToEscapeQuote ? $@"\\?{quoteChar}+$" : $@"{quoteChar}+$";
             var trailingQuotes = StringHelpers.RegexMatch(value.Substring(1), regex);
-#endif
             // if the first trailing quote is escaped, ignore it
 #if NET8_0_OR_GREATER
             if (options.AllowBackSlashToEscapeQuote && trailingQuotes.StartsWith('\\'))
@@ -96,18 +118,149 @@ namespace Csv
             if (options.AllowBackSlashToEscapeQuote && trailingQuotes.StartsWith("\\"))
 #endif
             {
-#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
-                trailingQuotes = trailingQuotes[2..];
-#else
                 trailingQuotes = trailingQuotes.Substring(2);
-#endif
             }
             // the value is properly terminated if there are an odd number of unescaped quotes at the end
             return trailingQuotes.Length % 2 == 0;
+#endif
         }
+
+#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
+        /// <summary>
+        /// Fast path for checking unterminated quoted values using spans directly
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool IsUnterminatedQuotedValueFast(ReadOnlySpan<char> value, char quoteChar, bool allowBackSlashEscape)
+        {
+            if (value.Length < 2 || value[0] != quoteChar)
+                return false;
+
+            // Count trailing quotes
+            int quoteCount = 0;
+            for (int i = value.Length - 1; i >= 1; i--)
+            {
+                if (value[i] != quoteChar)
+                    break;
+
+                // Handle escaped quotes
+                if (allowBackSlashEscape && i > 0 && value[i - 1] == '\\')
+                {
+                    i--; // Skip the backslash
+                    continue;
+                }
+
+                quoteCount++;
+            }
+
+            // If there are an even number of quotes, it's unterminated
+            return quoteCount % 2 == 0;
+        }
+
+        /// <summary>
+        /// Fast span-based CSV line splitting that avoids regex for better performance
+        /// </summary>
+        internal List<MemoryText> SplitLineSpan(MemoryText line, CsvOptions options)
+        {
+            var result = new List<MemoryText>();
+            var span = line.Span;
+            int start = 0;
+            int position = 0;
+            bool inQuotes = false;
+            char currentQuoteChar = '\0';
+            char separator = options.Separator;
+            bool allowSingleQuote = options.AllowSingleQuoteToEncloseFieldValues;
+            bool allowBackslashEscape = options.AllowBackSlashToEscapeQuote;
+
+            // Fast path: if the line doesn't contain quotes, we can do a simple split
+            bool hasQuotes = false;
+            for (int i = 0; i < span.Length; i++)
+            {
+                if (span[i] == '"' || (allowSingleQuote && span[i] == '\''))
+                {
+                    hasQuotes = true;
+                    break;
+                }
+            }
+
+            if (!hasQuotes)
+            {
+                // Simple split by separator
+                while (position < span.Length)
+                {
+                    if (span[position] == separator)
+                    {
+                        result.Add(line.Slice(start, position - start));
+                        start = position + 1;
+                    }
+                    position++;
+                }
+                // Add the last field
+                result.Add(line.Slice(start, position - start));
+                return result;
+            }
+
+            // Complex case with quotes
+            while (position < span.Length)
+            {
+                char c = span[position];
+
+                // Handle quotes
+                if ((c == '"' || (allowSingleQuote && c == '\'')) &&
+                    (position == 0 || span[position - 1] != '\\' || !allowBackslashEscape))
+                {
+                    if (!inQuotes)
+                    {
+                        inQuotes = true;
+                        currentQuoteChar = c;
+                    }
+                    else if (c == currentQuoteChar)
+                    {
+                        // Check for escaped quote
+                        if (position + 1 < span.Length && span[position + 1] == currentQuoteChar)
+                        {
+                            // Skip the escaped quote
+                            position++;
+                        }
+                        else
+                        {
+                            inQuotes = false;
+                            currentQuoteChar = '\0';
+                        }
+                    }
+                }
+                // Handle separators (when not in quotes)
+                else if (c == separator && !inQuotes)
+                {
+                    result.Add(line.Slice(start, position - start));
+                    start = position + 1;
+                }
+
+                position++;
+            }
+
+            // Add the last field
+            result.Add(line.Slice(start, position - start));
+            return result;
+        }
+#endif
 
         public IList<MemoryText> Split(MemoryText line, CsvOptions options)
         {
+#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
+            // Use span-based splitting for better performance when possible
+            if (useSpanSplitter && line.Length > 0)
+            {
+                try
+                {
+                    return SplitLineSpan(line, options);
+                }
+                catch
+                {
+                    // Fall back to regex splitter if any issues occur
+                }
+            }
+#endif
+
             var matches = splitter.Matches(line.AsString());
             var values = new List<MemoryText>(matches.Count);
             var p = -1;

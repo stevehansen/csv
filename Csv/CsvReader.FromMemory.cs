@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 
 using MemoryText = System.ReadOnlyMemory<char>;
 using SpanText = System.ReadOnlySpan<char>;
@@ -12,7 +13,7 @@ namespace Csv
     partial class CsvReader
     {
         /// <summary>
-        /// Reads the lines from the csv string.
+        /// Reads the lines from the csv string with optimized Span-based parsing.
         /// </summary>
         /// <param name="csv">The csv string to read the data from.</param>
         /// <param name="options">The optional options to use when reading.</param>
@@ -26,6 +27,16 @@ namespace Csv
             var position = 0;
             MemoryText[]? headers = null;
             Dictionary<string, int>? headerLookup = null;
+
+            // Optimization: Try to quickly determine separator by scanning the first line
+            if (options.Separator == '\0' && csv.Length > 0)
+            {
+                var firstLineEnd = csv.Span.IndexOfAny('\r', '\n');
+                if (firstLineEnd < 0) firstLineEnd = csv.Length;
+                TryGetQuickSeparator(csv.Span[..firstLineEnd], out var quickSeparator);
+                options.Separator = quickSeparator;
+            }
+
             while (!(line = csv.ReadLine(ref position)).IsEmpty)
             {
                 index++;
@@ -37,7 +48,8 @@ namespace Csv
                     InitializeOptions(line.Span, options);
                     var skipInitialLine = options.HeaderMode == HeaderMode.HeaderPresent;
 
-                    headers = skipInitialLine ? GetHeaders(line, options) : CreateDefaultHeaders(line, options);
+                    // Optimization: Use span-based header parsing when possible
+                    headers = skipInitialLine ? GetSpanHeaders(line, options) : CreateDefaultHeaders(line, options);
 
                     try
                     {
@@ -81,9 +93,11 @@ namespace Csv
                 }
 
                 var record = new ReadLineFromMemory(headers, headerLookup, index, line, options);
+
+                // Optimize multiline field handling with span-based operations
                 if (options.AllowNewLineInEnclosedFieldValues)
                 {
-                    while (record.RawSplitLine.Any(f => CsvLineSplitter.IsUnterminatedQuotedValue(f.AsSpan(), options)))
+                    while (HasUnterminatedQuotedFields(record.RawSplitLine, options))
                     {
                         var nextLine = csv.ReadLine(ref position);
                         if (nextLine.IsEmpty)
@@ -96,6 +110,85 @@ namespace Csv
 
                 yield return record;
             }
+        }
+
+        /// <summary>
+        /// Fast check for unterminated quoted fields in a collection
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool HasUnterminatedQuotedFields(IList<MemoryText> fields, CsvOptions options)
+        {
+            // Optimization: Only check the last field first since that's most common
+            if (fields.Count > 0 && CsvLineSplitter.IsUnterminatedQuotedValue(fields[^1].Span, options))
+                return true;
+
+            // If we have a multiline quote in other fields, check all fields
+            for (var i = 0; i < fields.Count - 1; i++)
+            {
+                if (CsvLineSplitter.IsUnterminatedQuotedValue(fields[i].Span, options))
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Try to determine the best separator by analyzing frequency
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool TryGetQuickSeparator(SpanText headerLine, out char separator)
+        {
+            // Common separators
+            SpanText candidates = stackalloc char[] { ',', ';', '\t', '|' };
+
+            // Count occurrences for each candidate
+            Span<int> counts = stackalloc int[candidates.Length];
+
+            for (var i = 0; i < headerLine.Length; i++)
+            {
+                for (var j = 0; j < candidates.Length; j++)
+                {
+                    if (headerLine[i] == candidates[j])
+                    {
+                        counts[j]++;
+                    }
+                }
+            }
+
+            // Find the most common separator
+            var maxCount = 0;
+            var maxIndex = -1;
+
+            for (var i = 0; i < counts.Length; i++)
+            {
+                if (counts[i] > maxCount)
+                {
+                    maxCount = counts[i];
+                    maxIndex = i;
+                }
+            }
+
+            if (maxCount > 0)
+            {
+                separator = candidates[maxIndex];
+                return true;
+            }
+
+            separator = ','; // Default
+            return false;
+        }
+
+        /// <summary>
+        /// Optimized span-based header parsing
+        /// </summary>
+        private static MemoryText[] GetSpanHeaders(MemoryText line, CsvOptions options)
+        {
+            // Get an instance of the line splitter
+            var splitter = options.Splitter;
+
+            // Split and trim the headers
+            var values = splitter.Split(line, options);
+            return Trim(values, options);
         }
 
         private sealed class ReadLineFromMemory : ICsvLineFromMemory
