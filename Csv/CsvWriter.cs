@@ -129,7 +129,7 @@ namespace Csv
                 if (i < data.Length)
                 {
                     var escape = false;
-                    var cell = data[i];
+                    var cell = data[i] ?? string.Empty;
 #if NET8_0_OR_GREATER
                     if (cell.Contains('"'))
 #else
