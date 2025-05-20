@@ -32,6 +32,11 @@ foreach (var line in CsvReader.ReadFromText(csv))
 
 `CsvReader` also supports reading from a `TextReader` (`CsvReader.Read(TextReader, CsvOptions)`) or a `Stream` (`CsvReader.ReadFromStream(Stream, CsvOptions)`)
 
+For .NET Standard 2.1 or .NET 5+ the library exposes `CsvReader.ReadAsync` and
+`CsvReader.ReadFromStreamAsync` which return `IAsyncEnumerable<ICsvLine>`.
+There is also `CsvReader.ReadFromMemory` to read from a `ReadOnlyMemory<char>`
+without allocating intermediate strings.
+
 `CsvOptions` can be used to configure the csv parsing:
 
 ```csharp
@@ -72,6 +77,20 @@ Id,Name
 1,Jane Doe
 */
 ```
+
+`CsvWriter` also includes asynchronous overloads (`WriteAsync` and
+`WriteToTextAsync`) which operate on `IAsyncEnumerable<string[]>` and support
+passing a `CancellationToken`.
+
+### Helper extensions
+
+`CsvReader` provides extension methods to work with the returned
+`IEnumerable<ICsvLine>`:
+
+- `GetColumn(int columnNo)` / `GetColumn<T>(int columnNo, Func<string, T>)` –
+  extract a single column from all rows.
+- `GetBlock(int row_start = 0, int row_length = -1, int col_start = 0,
+  int col_length = -1)` – get a rectangular subset of the data.
 
 
 ## Build status
