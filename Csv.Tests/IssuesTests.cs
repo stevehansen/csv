@@ -25,5 +25,24 @@ namespace Csv.Tests
             Assert.AreEqual("normal 4", data[3]);
             Assert.AreEqual("normal 5", data[4]);
         }
+
+        [TestMethod]
+        [TestCategory("Issues")]
+        public void Issue_72_IncorrectHeaders()
+        {
+            string importDataString = "Test;\"A\nB\nC\nD\nE\nF\nG\nH\";testing with very long string;123123";
+            var options = new CsvOptions
+            {
+                Separator = ';',
+                HeaderMode = HeaderMode.HeaderAbsent,
+                AllowNewLineInEnclosedFieldValues = true,
+                AllowBackSlashToEscapeQuote = false,
+            };
+
+            var data = CsvReader.ReadFromText(importDataString, options).ToArray();
+            Assert.AreEqual(1, data.Length);
+            var headers = data[0].Headers;
+            Assert.AreEqual(4, headers.Length);
+        }
     }
 }
