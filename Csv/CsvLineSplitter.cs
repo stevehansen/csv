@@ -26,7 +26,7 @@ namespace Csv
 
         public static bool IsUnterminatedQuotedValue(SpanText value, CsvOptions options)
         {
-            if (value.Length == 0)
+            if (value.Length == 0 || !options.AllowEnclosedFieldValues)
                 return false;
 
             char quoteChar;
@@ -112,7 +112,7 @@ namespace Csv
                         values.Add(value);
                         start = i + 1;
                     }
-                    else if ((ch == '"' || (options.AllowSingleQuoteToEncloseFieldValues && ch == '\'')) && i == start)
+                    else if (options.AllowEnclosedFieldValues && (ch == '"' || (options.AllowSingleQuoteToEncloseFieldValues && ch == '\'')) && i == start)
                     {
                         inQuotes = true;
                         quoteChar = ch;
