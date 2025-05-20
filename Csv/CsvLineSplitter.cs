@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Text.RegularExpressions;
 
 #if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
 using MemoryText = System.ReadOnlyMemory<char>;
@@ -17,52 +16,14 @@ namespace Csv
     /// </summary>
     internal sealed class CsvLineSplitter
     {
-#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
-        private static readonly Dictionary<(char Separator, bool AllowSingleQuoteToEncloseFieldValues), CsvLineSplitter> splitterCache = new Dictionary<(char, bool), CsvLineSplitter>();
-#else
-        private static readonly Dictionary<Tuple<char, bool>, CsvLineSplitter> splitterCache = new Dictionary<Tuple<char, bool>, CsvLineSplitter>();
-#endif
-
-        private static readonly object syncRoot = new object();
-
         private readonly char separator;
-        private readonly Regex splitter;
 
-        private CsvLineSplitter(char separator, Regex splitter)
+        private CsvLineSplitter(char separator)
         {
             this.separator = separator;
-            this.splitter = splitter;
         }
 
-        public static CsvLineSplitter Get(CsvOptions options)
-        {
-            CsvLineSplitter? splitter;
-            lock (syncRoot)
-            {
-#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
-                var key = (options.Separator, options.AllowSingleQuoteToEncloseFieldValues);
-#else
-                var key = Tuple.Create(options.Separator, options.AllowSingleQuoteToEncloseFieldValues);
-#endif
-                if (!splitterCache.TryGetValue(key, out splitter))
-                    splitterCache[key] = splitter = Create(options);
-            }
-
-            return splitter;
-        }
-
-        private static CsvLineSplitter Create(CsvOptions options)
-        {
-            const string patternEscape = @"(?>(?(IQ)(?(ESC).(?<-ESC>)|\\(?<ESC>))|(?!))|(?(IQ)\k<QUOTE>(?<-IQ>)|(?<=^|{0})(?<QUOTE>[{1}])(?<IQ>))|(?(IQ).|[^{0}]))+|^(?={0})|(?<={0})(?={0})|(?<={0})$";
-            const string patternNoEscape = @"(?>(?(IQ)\k<QUOTE>(?<-IQ>)|(?<=^|{0})(?<QUOTE>[{1}])(?<IQ>))|(?(IQ).|[^{0}]))+|^(?={0})|(?<={0})(?={0})|(?<={0})$";
-            var separator = Regex.Escape(options.Separator.ToString());
-            var quoteChars = options.AllowSingleQuoteToEncloseFieldValues ? "\"'" : "\"";
-            // Since netstandard1.0 doesn't include RegexOptions.Compiled, we include it by value (in case the target platform supports it)
-            const RegexOptions regexOptions = RegexOptions.Singleline | ((RegexOptions/*.Compiled*/)8);
-            if (options.AllowBackSlashToEscapeQuote)
-                return new CsvLineSplitter(options.Separator, new Regex(string.Format(patternEscape, separator, quoteChars), regexOptions));
-            return new CsvLineSplitter(options.Separator, new Regex(string.Format(patternNoEscape, separator, quoteChars), regexOptions));
-        }
+        public static CsvLineSplitter Get(CsvOptions options) => new CsvLineSplitter(options.Separator);
 
         public static bool IsUnterminatedQuotedValue(SpanText value, CsvOptions options)
         {
@@ -108,27 +69,64 @@ namespace Csv
 
         public IList<MemoryText> Split(MemoryText line, CsvOptions options)
         {
-            var matches = splitter.Matches(line.AsString());
-            var values = new List<MemoryText>(matches.Count);
-            var p = -1;
-            // ReSharper disable once ForCanBeConvertedToForeach
-            for (var i = 0; i < matches.Count; i++)
-            {
 #if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
-                var value = line.Slice(matches[i].Index, matches[i].Length);
+            var span = line.Span;
 #else
-                var value = matches[i].Value;
+            var span = line;
 #endif
-                if (p >= 0 && IsUnterminatedQuotedValue(values[p].AsSpan(), options))
+
+            var values = new List<MemoryText>();
+            var start = 0;
+            var inQuotes = false;
+            char quoteChar = '\0';
+
+            for (var i = 0; i < span.Length; i++)
+            {
+                var ch = span[i];
+                if (inQuotes)
                 {
-                    values[p] = StringHelpers.Concat(values[p], separator.ToString(), value);
+                    if (options.AllowBackSlashToEscapeQuote && ch == '\\' && i + 1 < span.Length && span[i + 1] == quoteChar)
+                    {
+                        i++; // skip escaped quote
+                    }
+                    else if (ch == quoteChar)
+                    {
+                        if (i + 1 < span.Length && span[i + 1] == quoteChar)
+                        {
+                            i++; // escaped quote
+                        }
+                        else
+                        {
+                            inQuotes = false;
+                        }
+                    }
                 }
                 else
                 {
-                    values.Add(value);
-                    p++;
+                    if (ch == separator)
+                    {
+#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
+                        var value = line.Slice(start, i - start);
+#else
+                        var value = line.Substring(start, i - start);
+#endif
+                        values.Add(value);
+                        start = i + 1;
+                    }
+                    else if ((ch == '"' || (options.AllowSingleQuoteToEncloseFieldValues && ch == '\'')) && i == start)
+                    {
+                        inQuotes = true;
+                        quoteChar = ch;
+                    }
                 }
             }
+
+#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
+            var last = line.Slice(start);
+#else
+            var last = line.Substring(start);
+#endif
+            values.Add(last);
             return values;
         }
     }
