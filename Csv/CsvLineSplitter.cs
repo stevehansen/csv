@@ -1,10 +1,9 @@
 ﻿using System.Collections.Generic;
 
-#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
+#if NET8_0_OR_GREATER
 using MemoryText = System.ReadOnlyMemory<char>;
 using SpanText = System.ReadOnlySpan<char>;
 #else
-using System; // NOTE: Used for Tuple
 using MemoryText = System.String;
 using SpanText = System.String;
 #endif
@@ -45,7 +44,7 @@ namespace Csv
             }
 
             var regex = options.AllowBackSlashToEscapeQuote ? $@"\\?{quoteChar}+$" : $@"{quoteChar}+$";
-#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
+#if NET8_0_OR_GREATER
             var trailingQuotes = StringHelpers.RegexMatch(value[1..], regex);
 #else
             var trailingQuotes = StringHelpers.RegexMatch(value.Substring(1), regex);
@@ -57,7 +56,7 @@ namespace Csv
             if (options.AllowBackSlashToEscapeQuote && trailingQuotes.StartsWith("\\"))
 #endif
             {
-#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
+#if NET8_0_OR_GREATER
                 trailingQuotes = trailingQuotes[2..];
 #else
                 trailingQuotes = trailingQuotes.Substring(2);
@@ -69,7 +68,7 @@ namespace Csv
 
         public IList<MemoryText> Split(MemoryText line, CsvOptions options)
         {
-#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
+#if NET8_0_OR_GREATER
             var span = line.Span;
 #else
             var span = line;
@@ -105,7 +104,7 @@ namespace Csv
                 {
                     if (ch == separator)
                     {
-#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
+#if NET8_0_OR_GREATER
                         var value = line.Slice(start, i - start);
 #else
                         var value = line.Substring(start, i - start);
@@ -121,7 +120,7 @@ namespace Csv
                 }
             }
 
-#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
+#if NET8_0_OR_GREATER
             var last = line.Slice(start);
 #else
             var last = line.Substring(start);

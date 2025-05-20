@@ -52,7 +52,7 @@ namespace Csv
             }
         }
 
-#if NETSTANDARD2_1 || NETCOREAPP3_1_OR_GREATER
+#if NET8_0_OR_GREATER
 
         /// <summary>
         /// Writes the lines to the writer.

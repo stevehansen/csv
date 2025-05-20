@@ -1,8 +1,8 @@
-using System;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 
-#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
+#if NET8_0_OR_GREATER
+using System;
 using MemoryText = System.ReadOnlyMemory<char>;
 using SpanText = System.ReadOnlySpan<char>;
 #else
@@ -14,7 +14,7 @@ using SpanText = System.String;
 
 namespace Csv
 {
-#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
+#if NET8_0_OR_GREATER
 
     /// <summary>
     /// Extension methods for <see cref="ReadOnlyMemory{Char}"/> to handle common string operations.
@@ -129,38 +129,11 @@ namespace Csv
             return Regex.Match(new string(str), pattern).Value;
         }
 
-#if NETSTANDARD2_1
-        internal static ReadOnlyMemory<char> Trim(this ReadOnlyMemory<char> str)
-        {
-            var span = str.Span;
-            var start = 0;
-            var end = str.Length - 1;
-            for (; start < str.Length; start++)
-            {
-                if (!char.IsWhiteSpace(span[start]))
-                    break;
-            }
-
-            for (; end >= start; end--)
-            {
-                if (!char.IsWhiteSpace(span[end]))
-                    break;
-            }
-
-            return str[start..end];
-        }
-
-        internal static MemoryText Concat(MemoryText str1, string str2, MemoryText str3)
-        {
-            return (str1.AsString() + str2 + str3.AsString()).AsMemory();
-        }
-#else
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static MemoryText Concat(MemoryText str1, string str2, MemoryText str3)
         {
             return string.Concat(str1.Span, str2.AsSpan(), str3.Span).AsMemory();
         }
-#endif
     }
 #else
     internal static class StringHelpers // NOTE: Extension methods are provided to reuse the same code

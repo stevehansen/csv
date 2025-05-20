@@ -2,22 +2,22 @@
 
   <PropertyGroup>
     <Description>Really simple csv library</Description>
-    <Copyright>Copyright © Steve Hansen 2015-2020</Copyright>
+    <Copyright>Copyright © Steve Hansen 2015-2025</Copyright>
     <AssemblyTitle>Csv</AssemblyTitle>
     <Authors>Steve Hansen</Authors>
-    <TargetFrameworks>net40;netstandard2.0;netstandard2.1;net8.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;net8.0;net9.0</TargetFrameworks>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <AssemblyName>Csv</AssemblyName>
     <PackageId>Csv</PackageId>
     <PackageTags>csv</PackageTags>
     <PackageIconUrl>https://raw.github.com/stevehansen/csv/master/Csv/icon.png</PackageIconUrl>
     <PackageIcon>icon.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageProjectUrl>https://github.com/stevehansen/csv/</PackageProjectUrl>
-    <PackageLicenseUrl>https://raw.github.com/stevehansen/csv/master/LICENSE</PackageLicenseUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
 	<RepositoryUrl>https://github.com/stevehansen/csv.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <NetStandardImplicitPackageVersion>1.6.0</NetStandardImplicitPackageVersion>
-    <PackageTargetFallback Condition=" '$(TargetFramework)' == 'netstandard1.0' ">$(PackageTargetFallback);dnxcore50</PackageTargetFallback>
     <GenerateAssemblyTitleAttribute>true</GenerateAssemblyTitleAttribute>
     <GenerateAssemblyDescriptionAttribute>true</GenerateAssemblyDescriptionAttribute>
     <GenerateAssemblyConfigurationAttribute>false</GenerateAssemblyConfigurationAttribute>
@@ -43,11 +43,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="..\README.md" Pack="True" PackagePath="\" />
     <None Include="icon.png" Pack="True" PackagePath="\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
   </ItemGroup>
 
 </Project>

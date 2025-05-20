@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
+#if NET8_0_OR_GREATER
 using MemoryText = System.ReadOnlyMemory<char>;
 using SpanText = System.ReadOnlySpan<char>;
 #else
@@ -160,7 +160,7 @@ namespace Csv
             }
         }
 
-#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
+#if NET8_0_OR_GREATER
         /// <summary>
         /// Reads the lines from the reader.
         /// </summary>
@@ -351,7 +351,7 @@ namespace Csv
 
                 if (str.Length > 1)
                 {
-#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
+#if NET8_0_OR_GREATER
                     if (str.Span[0] == '"' && str.Span[^1] == '"')
                     {
                         str = str[1..^1].Unescape('"', '"');
@@ -480,7 +480,7 @@ namespace Csv
             {
                 get
                 {
-#if NETCOREAPP3_1_OR_GREATER || NETSTANDARD2_1
+#if NET8_0_OR_GREATER
                     rawSplitLine ??= SplitLine(Raw.AsMemory(), options);
 #else
                     rawSplitLine ??= SplitLine(Raw, options);
