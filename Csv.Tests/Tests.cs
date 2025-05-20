@@ -2,6 +2,8 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Csv.Tests
@@ -753,6 +755,34 @@ namespace Csv.Tests
             Assert.AreEqual("Never", block[1]["C"]);
             Assert.AreEqual("89.64", block[2]["B"]);
             Assert.AreEqual("gonna", block[2]["C"]);
+        }
+
+        [TestMethod]
+        public async Task ReadFromTextAsyncMatchesSync()
+        {
+            const string csv = "A,B\n1,2\n3,4";
+            var sync = CsvReader.ReadFromText(csv).ToArray();
+            var asyncLines = new List<ICsvLine>();
+            await foreach (var line in CsvReader.ReadFromTextAsync(csv))
+                asyncLines.Add(line);
+
+            Assert.AreEqual(sync.Length, asyncLines.Count);
+            for (var i = 0; i < sync.Length; i++)
+                CollectionAssert.AreEqual(sync[i].Values, asyncLines[i].Values);
+        }
+
+        [TestMethod]
+        public async Task ReadFromStreamAsyncMatchesSync()
+        {
+            const string csv = "A,B\n1,2\n3,4";
+            var sync = CsvReader.ReadFromStream(new MemoryStream(Encoding.UTF8.GetBytes(csv))).ToArray();
+            var asyncLines = new List<ICsvLine>();
+            await foreach (var line in CsvReader.ReadFromStreamAsync(new MemoryStream(Encoding.UTF8.GetBytes(csv))))
+                asyncLines.Add(line);
+
+            Assert.AreEqual(sync.Length, asyncLines.Count);
+            for (var i = 0; i < sync.Length; i++)
+                CollectionAssert.AreEqual(sync[i].Values, asyncLines[i].Values);
         }
     }
 }
