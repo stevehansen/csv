@@ -425,6 +425,17 @@ namespace Csv.Tests
         }
 
         [TestMethod]
+        public void DisableQuoteParsingTreatsQuotesAsData()
+        {
+            var input = "h1\th2\th3\r\n1\t\"2\" is 2\t3";
+            var options = new CsvOptions { Separator = '\t', AllowEnclosedFieldValues = false };
+            var lines = CsvReader.ReadFromText(input, options).ToArray();
+            Assert.AreEqual(1, lines.Length);
+            Assert.AreEqual("\"2\" is 2", lines[0]["h2"]);
+            Assert.AreEqual("3", lines[0]["h3"]);
+        }
+
+        [TestMethod]
         public void WithAllowNewLineInEnclosedFieldValues_AllowLFInsideQuotedValue()
         {
             var options = new CsvOptions

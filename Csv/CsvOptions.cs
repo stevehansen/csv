@@ -79,6 +79,12 @@ namespace Csv
         public bool AllowSingleQuoteToEncloseFieldValues { get; set; }
 
         /// <summary>
+        /// Allows field values to be enclosed in quotes. When set to <c>false</c> quotes
+        /// will be treated as normal characters, defaults to <c>true</c>.
+        /// </summary>
+        public bool AllowEnclosedFieldValues { get; set; } = true;
+
+        /// <summary>
         /// The new line string to use when multiline field values are read, defaults to <see cref="Environment.NewLine"/>.
         /// </summary>
         /// <remarks>

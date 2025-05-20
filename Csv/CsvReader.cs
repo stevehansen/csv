@@ -349,17 +349,18 @@ namespace Csv
                 if (options.TrimData)
                     str = str.Trim();
 
-                if (str.Length > 1)
+                if (str.Length > 1 && options.AllowEnclosedFieldValues)
                 {
 #if NET8_0_OR_GREATER
-                    if (str.Span[0] == '"' && str.Span[^1] == '"')
+                    var span = str.Span;
+                    if (span[0] == '"' && span[^1] == '"')
                     {
                         str = str[1..^1].Unescape('"', '"');
 
                         if (options.AllowBackSlashToEscapeQuote)
                             str = str.Unescape('\\', '"');
                     }
-                    else if (options.AllowSingleQuoteToEncloseFieldValues && str.Span[0] == '\'' && str.Span[^1] == '\'')
+                    else if (options.AllowSingleQuoteToEncloseFieldValues && span[0] == '\'' && span[^1] == '\'')
                         str = str[1..^1];
 #else
                     if (str[0] == '"' && str[str.Length - 1] == '"')
