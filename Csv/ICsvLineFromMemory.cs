@@ -40,6 +40,12 @@ namespace Csv
         bool HasColumn(string name);
 
         /// <summary>
+        /// Indicates whether the specified <paramref name="name"/> exists and
+        /// the current line contains a value for it.
+        /// </summary>
+        bool LineHasColumn(string name);
+
+        /// <summary>
         /// Gets the data for the specified named header.
         /// </summary>
         /// <param name="name">The name of the header.</param>

@@ -124,6 +124,14 @@ namespace Csv
 
             public bool HasColumn(string name) => headerLookup.ContainsKey(name);
 
+            public bool LineHasColumn(string name)
+            {
+                if (!headerLookup.TryGetValue(name, out var index))
+                    return false;
+
+                return RawSplitLine.Count > index;
+            }
+
             internal IList<MemoryText> RawSplitLine => rawSplitLine ??= SplitLine(Raw, options);
 
             public MemoryText[] Values => Line;

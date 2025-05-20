@@ -389,6 +389,23 @@ namespace Csv.Tests
         }
 
         [TestMethod]
+        public void TestLineHasColumnMissing()
+        {
+            var lines = CsvReader.ReadFromText("a;b;c\n1;2").ToArray();
+            var line = lines[0];
+            Assert.IsTrue(line.HasColumn("c"));
+            Assert.IsFalse(line.LineHasColumn("c"));
+        }
+
+        [TestMethod]
+        public void TestLineHasColumnPresent()
+        {
+            var lines = CsvReader.ReadFromText("a;b;c\n1;2;3").ToArray();
+            var line = lines[0];
+            Assert.IsTrue(line.LineHasColumn("c"));
+        }
+
+        [TestMethod]
         public void ThrowExceptionForInvalidNumberOfCells()
         {
             var lines = CsvReader.ReadFromText("a;b;c\na;b").ToArray();
