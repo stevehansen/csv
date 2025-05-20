@@ -642,6 +642,48 @@ namespace Csv.Tests
             Assert.AreEqual("B \\\"", withoutSpace[0][1]);
             Assert.AreEqual("C", withoutSpace[0][2]);
         }
+
+        [TestMethod]
+        public void UnterminatedQuoteNoNewLine()
+        {
+            var lines = CsvReader.ReadFromText("a,b\n1,\"2").ToArray();
+            Assert.AreEqual(1, lines.Length);
+            Assert.AreEqual(2, lines[0].ColumnCount);
+            Assert.AreEqual("1", lines[0]["a"]);
+            Assert.AreEqual("\"2", lines[0]["b"]);
+        }
+
+        [TestMethod]
+        public void UnterminatedQuoteWithNewLine()
+        {
+            var options = new CsvOptions { AllowNewLineInEnclosedFieldValues = true };
+            var csv = "a,b\n1,\"2\n3,4";
+            var lines = CsvReader.ReadFromText(csv, options).ToArray();
+            Assert.AreEqual(1, lines.Length);
+            Assert.AreEqual(2, lines[0].ColumnCount);
+            Assert.AreEqual("1", lines[0]["a"]);
+            Assert.AreEqual($"\"2{options.NewLine}3,4", lines[0]["b"]);
+        }
+
+        [TestMethod]
+        public void TooManyColumnsWithoutValidation()
+        {
+            var lines = CsvReader.ReadFromText("a,b\n1,2,3").ToArray();
+            Assert.AreEqual(1, lines.Length);
+            Assert.AreEqual(3, lines[0].ColumnCount);
+            Assert.AreEqual("1", lines[0]["a"]);
+            Assert.AreEqual("2", lines[0]["b"]);
+            Assert.AreEqual("3", lines[0][2]);
+        }
+
+        [TestMethod]
+        public void TooManyColumnsWithValidation()
+        {
+            var options = new CsvOptions { ValidateColumnCount = true };
+            var lines = CsvReader.ReadFromText("a,b\n1,2,3", options).ToArray();
+            Assert.AreEqual(1, lines.Length);
+            Assert.ThrowsExactly<InvalidOperationException>(() => _ = lines[0]["a"]);
+        }
         public const string smalldatabase = @"A,B,C,D
 1,34.47,Never,15
 2,44.17,gonna,28
