@@ -212,6 +212,50 @@ namespace Csv.Tests
 
         [TestMethod]
         [TestCategory("CsvOptions")]
+        public void HeaderAbsentWithMultilineQuotedField()
+        {
+            // Test case for issue where multiline quoted fields cause incorrect header count in HeaderAbsent mode
+            const string input = @"Test;""A
+B
+C
+D
+E
+F
+G
+H"";testing with very long string;123123";
+            var options = new CsvOptions
+            {
+                Separator = ';',
+                HeaderMode = HeaderMode.HeaderAbsent,
+                AllowNewLineInEnclosedFieldValues = true,
+                AllowBackSlashToEscapeQuote = false,
+            };
+
+            var lines = CsvReader.ReadFromText(input, options).ToArray();
+
+            Assert.AreEqual(1, lines.Length);
+            var line = lines[0];
+            
+            // Headers should match the actual column count
+            Assert.AreEqual(4, line.ColumnCount);
+            Assert.AreEqual(4, line.Headers.Length);
+            Assert.AreEqual(4, line.Values.Length);
+            
+            // Headers should be generated correctly
+            Assert.AreEqual("Column1", line.Headers[0]);
+            Assert.AreEqual("Column2", line.Headers[1]);
+            Assert.AreEqual("Column3", line.Headers[2]);
+            Assert.AreEqual("Column4", line.Headers[3]);
+            
+            // Values should be parsed correctly
+            Assert.AreEqual("Test", line.Values[0]);
+            Assert.AreEqual("A\nB\nC\nD\nE\nF\nG\nH", line.Values[1]);
+            Assert.AreEqual("testing with very long string", line.Values[2]);
+            Assert.AreEqual("123123", line.Values[3]);
+        }
+
+        [TestMethod]
+        [TestCategory("CsvOptions")]
         public void IgnoreHeaderCasing()
         {
             var lines = CsvReader.ReadFromText("A,B,C\n1,2,3\n4,5,6", new CsvOptions { Comparer = StringComparer.OrdinalIgnoreCase }).ToArray();

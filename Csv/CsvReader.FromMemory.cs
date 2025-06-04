@@ -92,6 +92,19 @@ namespace Csv
                         line = StringHelpers.Concat(line, options.NewLine, nextLine);
                         record = new ReadLineFromMemory(headers, headerLookup, index, line, options);
                     }
+
+                    // After multiline processing, check if we need to update headers for HeaderAbsent mode
+                    if (options.HeaderMode == HeaderMode.HeaderAbsent && record.ColumnCount != headers.Length)
+                    {
+                        // Recreate headers based on the final processed line
+                        headers = CreateDefaultHeaders(line, options);
+                        headerLookup = headers
+                            .Select((h, idx) => (h, idx))
+                            .ToDictionary(h => h.Item1.AsString(), h => h.Item2, options.Comparer);
+                        
+                        // Recreate the record with updated headers
+                        record = new ReadLineFromMemory(headers, headerLookup, index, line, options);
+                    }
                 }
 
                 yield return record;
