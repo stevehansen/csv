@@ -197,3 +197,5 @@ FakesAssemblies/
 
 # Visual Studio 2015 .NET Core Preview
 project.lock.json
+
+.claude/settings.local.json
