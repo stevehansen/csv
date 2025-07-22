@@ -57,6 +57,301 @@ namespace Csv
             return ReadFromTextImpl(csv, options);
         }
 
+#if NET8_0_OR_GREATER
+
+        /// <summary>
+        /// Reads the lines from the reader with enhanced Span/Memory support.
+        /// </summary>
+        /// <param name="reader">The text reader to read the data from.</param>
+        /// <param name="options">The optional options to use when reading.</param>
+        public static IEnumerable<ICsvLineSpan> ReadAsSpan(TextReader reader, CsvOptions? options = null)
+        {
+            if (reader == null)
+                throw new ArgumentNullException(nameof(reader));
+
+            return ReadSpanImpl(reader, options);
+        }
+
+        /// <summary>
+        /// Reads the lines from the stream with enhanced Span/Memory support.
+        /// </summary>
+        /// <param name="stream">The stream to read the data from.</param>
+        /// <param name="options">The optional options to use when reading.</param>
+        public static IEnumerable<ICsvLineSpan> ReadFromStreamAsSpan(Stream stream, CsvOptions? options = null)
+        {
+            if (stream == null)
+                throw new ArgumentNullException(nameof(stream));
+
+            return ReadFromStreamSpanImpl(stream, options);
+        }
+
+        /// <summary>
+        /// Reads the lines from the csv string with enhanced Span/Memory support.
+        /// </summary>
+        /// <param name="csv">The csv string to read the data from.</param>
+        /// <param name="options">The optional options to use when reading.</param>
+        public static IEnumerable<ICsvLineSpan> ReadFromTextAsSpan(string csv, CsvOptions? options = null)
+        {
+            if (csv == null)
+                throw new ArgumentNullException(nameof(csv));
+
+            return ReadFromTextSpanImpl(csv, options);
+        }
+
+        private static IEnumerable<ICsvLineSpan> ReadFromStreamSpanImpl(Stream stream, CsvOptions? options)
+        {
+            using (var reader = new StreamReader(stream))
+            {
+                foreach (var line in ReadSpanImpl(reader, options))
+                    yield return line;
+            }
+        }
+
+        private static IEnumerable<ICsvLineSpan> ReadFromTextSpanImpl(string csv, CsvOptions? options)
+        {
+            using (var reader = new StringReader(csv))
+            {
+                foreach (var line in ReadSpanImpl(reader, options))
+                    yield return line;
+            }
+        }
+
+        private static IEnumerable<ICsvLineSpan> ReadSpanImpl(TextReader reader, CsvOptions? options)
+        {
+            options ??= new CsvOptions();
+
+            string? line;
+            var index = 0;
+            MemoryText[]? headers = null;
+            Dictionary<string, int>? headerLookup = null;
+            while ((line = reader.ReadLine()) != null)
+            {
+                index++;
+
+                var lineAsMemory = line.AsMemory();
+                if (index <= options.RowsToSkip || options.SkipRow?.Invoke(lineAsMemory, index) == true)
+                    continue;
+
+                if (headers == null || headerLookup == null)
+                {
+                    InitializeOptions(lineAsMemory.AsSpan(), options);
+                    var skipInitialLine = options.HeaderMode == HeaderMode.HeaderPresent;
+
+                    headers = skipInitialLine ? GetHeaders(lineAsMemory, options) : CreateDefaultHeaders(lineAsMemory, options);
+
+                    try
+                    {
+                        headerLookup = headers
+                            .Select((h, idx) => (h, idx))
+                            .ToDictionary(h => h.Item1.AsString(), h => h.Item2, options.Comparer);
+                    }
+                    catch (ArgumentException)
+                    {
+                        throw new InvalidOperationException("Duplicate headers detected in HeaderPresent mode. If you don't have a header you can set the HeaderMode to HeaderAbsent.");
+                    }
+
+                    var aliases = options.Aliases;
+                    if (aliases != null)
+                    {
+                        foreach (var aliasGroup in aliases)
+                        {
+                            var groupIndex = -1;
+                            foreach (var alias in aliasGroup)
+                            {
+                                if (headerLookup.TryGetValue(alias, out var aliasIndex))
+                                {
+                                    if (groupIndex != -1)
+                                        throw new InvalidOperationException("Found multiple matches within alias group: " + string.Join(";", aliasGroup));
+
+                                    groupIndex = aliasIndex;
+                                }
+                            }
+
+                            if (groupIndex != -1)
+                            {
+                                foreach (var alias in aliasGroup)
+                                    headerLookup[alias] = groupIndex;
+                            }
+                        }
+                    }
+
+                    if (skipInitialLine)
+                        continue;
+                }
+
+                var record = new ReadLineSpan(headers, headerLookup, index, line, options);
+                if (options.AllowNewLineInEnclosedFieldValues)
+                {
+                    while (record.RawSplitLine.Any(f => CsvLineSplitter.IsUnterminatedQuotedValue(f.AsSpan(), options)))
+                    {
+                        var nextLine = reader.ReadLine();
+                        if (nextLine == null)
+                            break;
+
+                        line = StringHelpers.Concat(line.AsMemory(), options.NewLine, nextLine.AsMemory()).AsString();
+                        record = new ReadLineSpan(headers, headerLookup, index, line, options);
+                    }
+                }
+
+                yield return record;
+            }
+        }
+
+        /// <summary>
+        /// Reads CSV data from memory with enhanced memory management options.
+        /// </summary>
+        /// <param name="csv">The CSV data as ReadOnlyMemory.</param>
+        /// <param name="options">The CSV parsing options.</param>
+        /// <param name="memoryOptions">The memory management options.</param>
+        /// <returns>An enumerable of CSV lines with memory optimization.</returns>
+        public static IEnumerable<ICsvLineSpan> ReadFromMemoryOptimized(ReadOnlyMemory<char> csv, CsvOptions? options = null, CsvMemoryOptions? memoryOptions = null)
+        {
+            options ??= new CsvOptions();
+            memoryOptions ??= new CsvMemoryOptions();
+            memoryOptions.Validate();
+
+            return ReadFromMemoryOptimizedImpl(csv, options, memoryOptions);
+        }
+
+        /// <summary>
+        /// Creates a buffer writer for optimized CSV writing.
+        /// </summary>
+        /// <param name="headers">The CSV headers.</param>
+        /// <param name="separator">The column separator.</param>
+        /// <param name="memoryOptions">The memory options.</param>
+        /// <returns>A buffer writer instance.</returns>
+        public static CsvBufferWriter CreateBufferWriter(ReadOnlySpan<string> headers, char separator = ',', CsvMemoryOptions? memoryOptions = null)
+        {
+            memoryOptions ??= new CsvMemoryOptions();
+            var writer = new CsvBufferWriter(memoryOptions);
+            
+            var headerMemories = new ReadOnlyMemory<char>[headers.Length];
+            for (int i = 0; i < headers.Length; i++)
+            {
+                headerMemories[i] = headers[i].AsMemory();
+            }
+
+            writer.WriteRow(headerMemories, separator);
+            return writer;
+        }
+
+        private static IEnumerable<ICsvLineSpan> ReadFromMemoryOptimizedImpl(ReadOnlyMemory<char> csv, CsvOptions options, CsvMemoryOptions memoryOptions)
+        {
+            var position = 0;
+            var index = 0;
+            ReadOnlyMemory<char>[]? headers = null;
+            Dictionary<string, int>? headerLookup = null;
+
+            while (position < csv.Length)
+            {
+                var line = ReadLineOptimized(csv, ref position, memoryOptions);
+                if (line.IsEmpty) break;
+
+                index++;
+
+                if (index <= options.RowsToSkip || options.SkipRow?.Invoke(line, index) == true)
+                    continue;
+
+                if (headers == null || headerLookup == null)
+                {
+                    InitializeOptions(line.Span, options);
+                    var skipInitialLine = options.HeaderMode == HeaderMode.HeaderPresent;
+
+                    headers = skipInitialLine ? GetHeaders(line, options) : CreateDefaultHeaders(line, options);
+
+                    try
+                    {
+                        headerLookup = headers
+                            .Select((h, idx) => (h, idx))
+                            .ToDictionary(h => h.Item1.ToString(), h => h.Item2, options.Comparer);
+                    }
+                    catch (ArgumentException)
+                    {
+                        throw new InvalidOperationException("Duplicate headers detected in HeaderPresent mode. If you don't have a header you can set the HeaderMode to HeaderAbsent.");
+                    }
+
+                    if (skipInitialLine)
+                        continue;
+                }
+
+                var record = new ReadLineSpanOptimized(headers, headerLookup, index, line, options, memoryOptions);
+                if (options.AllowNewLineInEnclosedFieldValues)
+                {
+                    while (record.RawSplitLine.Any(f => CsvLineSplitter.IsUnterminatedQuotedValue(f.Span, options)))
+                    {
+                        var nextLine = ReadLineOptimized(csv, ref position, memoryOptions);
+                        if (nextLine.IsEmpty)
+                            break;
+
+                        line = ConcatenateMemory(line, options.NewLine.AsMemory(), nextLine, memoryOptions);
+                        record = new ReadLineSpanOptimized(headers, headerLookup, index, line, options, memoryOptions);
+                    }
+                }
+
+                yield return record;
+            }
+        }
+
+        private static ReadOnlyMemory<char> ReadLineOptimized(ReadOnlyMemory<char> source, ref int position, CsvMemoryOptions memoryOptions)
+        {
+            if (position >= source.Length)
+                return ReadOnlyMemory<char>.Empty;
+
+            var span = source.Span.Slice(position);
+            var newlineIndex = span.IndexOfAny('\n', '\r');
+            
+            if (newlineIndex == -1)
+            {
+                // Last line without newline
+                var result = source.Slice(position);
+                position = source.Length;
+                return result;
+            }
+
+            var lineLength = newlineIndex;
+            var line = source.Slice(position, lineLength);
+            
+            // Skip newline characters
+            position += lineLength;
+            if (position < source.Length)
+            {
+                var ch = source.Span[position];
+                if (ch == '\r' || ch == '\n')
+                {
+                    position++;
+                    // Handle CRLF
+                    if (position < source.Length && ch == '\r' && source.Span[position] == '\n')
+                        position++;
+                }
+            }
+
+            return line;
+        }
+
+        private static ReadOnlyMemory<char> ConcatenateMemory(ReadOnlyMemory<char> first, ReadOnlyMemory<char> separator, ReadOnlyMemory<char> second, CsvMemoryOptions memoryOptions)
+        {
+            var totalLength = first.Length + separator.Length + second.Length;
+            var buffer = memoryOptions.CharArrayPool.Rent(totalLength);
+            
+            try
+            {
+                var span = buffer.AsSpan();
+                first.Span.CopyTo(span);
+                separator.Span.CopyTo(span.Slice(first.Length));
+                second.Span.CopyTo(span.Slice(first.Length + separator.Length));
+                
+                var result = new char[totalLength];
+                span.Slice(0, totalLength).CopyTo(result);
+                return result.AsMemory();
+            }
+            finally
+            {
+                memoryOptions.CharArrayPool.Return(buffer);
+            }
+        }
+
+#endif
+
         private static IEnumerable<ICsvLine> ReadFromStreamImpl(Stream stream, CsvOptions? options)
         {
             using (var reader = new StreamReader(stream))
@@ -540,5 +835,349 @@ namespace Csv
                 return Raw;
             }
         }
+
+#if NET8_0_OR_GREATER
+
+        private sealed class ReadLineSpan : ICsvLineSpan
+        {
+            private readonly Dictionary<string, int> headerLookup;
+            private readonly CsvOptions options;
+            private readonly MemoryText[] headers;
+            private IList<MemoryText>? rawSplitLine;
+            internal MemoryText[]? parsedLine;
+
+            public ReadLineSpan(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, string raw, CsvOptions options)
+            {
+                this.headerLookup = headerLookup;
+                this.options = options;
+                this.headers = headers;
+                Raw = raw;
+                Index = index;
+            }
+
+            public string[] Headers => headers.Select(it => it.AsString()).ToArray();
+            public ReadOnlyMemory<char>[] HeadersMemory => headers;
+            public ReadOnlySpan<char> HeadersSpan => throw new NotSupportedException("HeadersSpan not supported for array access. Use GetSpan(int) or GetMemory(int) for individual headers.");
+
+            public string Raw { get; }
+            public ReadOnlyMemory<char> RawMemory => Raw.AsMemory();
+            public ReadOnlySpan<char> RawSpan => Raw.AsSpan();
+
+            public int Index { get; }
+            public int ColumnCount => Line.Length;
+
+            public bool HasColumn(string name) => headerLookup.ContainsKey(name);
+
+            public bool LineHasColumn(string name)
+            {
+                if (!headerLookup.TryGetValue(name, out var index))
+                    return false;
+
+                return RawSplitLine.Count > index;
+            }
+
+            internal IList<MemoryText> RawSplitLine => rawSplitLine ??= SplitLine(Raw.AsMemory(), options);
+
+            public string[] Values => Line.Select(it => it.AsString()).ToArray();
+            public ReadOnlyMemory<char>[] ValuesMemory => Line;
+            public ReadOnlySpan<char> ValuesSpan => throw new NotSupportedException("ValuesSpan not supported for array access. Use GetSpan(int) or GetMemory(int) for individual values.");
+
+            private MemoryText[] Line
+            {
+                get
+                {
+                    if (parsedLine == null)
+                    {
+                        var raw = RawSplitLine;
+
+                        if (options.ValidateColumnCount && raw.Count != Headers.Length)
+                            throw new InvalidOperationException($"Expected {Headers.Length}, got {raw.Count} columns.");
+
+                        parsedLine = Trim(raw, options);
+                    }
+
+                    return parsedLine;
+                }
+            }
+
+            string ICsvLine.this[string name] => GetSpan(name).ToString();
+            string ICsvLine.this[int index] => GetSpan(index).ToString();
+
+            public ReadOnlyMemory<char> GetMemory(string name)
+            {
+                if (!headerLookup.TryGetValue(name, out var index))
+                {
+                    if (options.ReturnEmptyForMissingColumn)
+                        return ReadOnlyMemory<char>.Empty;
+
+                    throw new ArgumentOutOfRangeException(nameof(name), name, $"Header '{name}' does not exist. Expected one of {string.Join("; ", Headers)}");
+                }
+
+                try
+                {
+                    return Line[index];
+                }
+                catch (IndexOutOfRangeException)
+                {
+                    throw new InvalidOperationException($"Invalid row, missing {name} header, expected {Headers.Length} columns, got {Line.Length} columns.");
+                }
+            }
+
+            public ReadOnlyMemory<char> GetMemory(int index) => Line[index];
+
+            public ReadOnlySpan<char> GetSpan(string name) => GetMemory(name).Span;
+            public ReadOnlySpan<char> GetSpan(int index) => GetMemory(index).Span;
+
+            public bool TryGetMemory(string name, out ReadOnlyMemory<char> value)
+            {
+                if (headerLookup.TryGetValue(name, out var index) && index < Line.Length)
+                {
+                    value = Line[index];
+                    return true;
+                }
+
+                value = ReadOnlyMemory<char>.Empty;
+                return false;
+            }
+
+            public bool TryGetMemory(int index, out ReadOnlyMemory<char> value)
+            {
+                if (index >= 0 && index < Line.Length)
+                {
+                    value = Line[index];
+                    return true;
+                }
+
+                value = ReadOnlyMemory<char>.Empty;
+                return false;
+            }
+
+            public bool TryGetSpan(string name, out ReadOnlySpan<char> value)
+            {
+                if (TryGetMemory(name, out var memory))
+                {
+                    value = memory.Span;
+                    return true;
+                }
+
+                value = ReadOnlySpan<char>.Empty;
+                return false;
+            }
+
+            public bool TryGetSpan(int index, out ReadOnlySpan<char> value)
+            {
+                if (TryGetMemory(index, out var memory))
+                {
+                    value = memory.Span;
+                    return true;
+                }
+
+                value = ReadOnlySpan<char>.Empty;
+                return false;
+            }
+
+            public override string ToString() => Raw;
+        }
+
+        private sealed class ReadLineSpanOptimized : ICsvLineSpan
+        {
+            private readonly Dictionary<string, int> headerLookup;
+            private readonly CsvOptions options;
+            private readonly CsvMemoryOptions memoryOptions;
+            private readonly ReadOnlyMemory<char>[] headers;
+            private readonly ReadOnlyMemory<char> rawMemory;
+            private IList<ReadOnlyMemory<char>>? rawSplitLine;
+            private ReadOnlyMemory<char>[]? parsedLine;
+
+            public ReadLineSpanOptimized(ReadOnlyMemory<char>[] headers, Dictionary<string, int> headerLookup, int index, ReadOnlyMemory<char> raw, CsvOptions options, CsvMemoryOptions memoryOptions)
+            {
+                this.headerLookup = headerLookup;
+                this.options = options;
+                this.memoryOptions = memoryOptions;
+                this.headers = headers;
+                this.rawMemory = raw;
+                Index = index;
+            }
+
+            public string[] Headers => headers.Select(h => h.ToString()).ToArray();
+            public ReadOnlyMemory<char>[] HeadersMemory => headers;
+            public ReadOnlySpan<char> HeadersSpan => throw new NotSupportedException("HeadersSpan not supported for array access. Use GetSpan(int) or GetMemory(int) for individual headers.");
+
+            public string Raw => rawMemory.ToString();
+            public ReadOnlyMemory<char> RawMemory => rawMemory;
+            public ReadOnlySpan<char> RawSpan => rawMemory.Span;
+
+            public int Index { get; }
+            public int ColumnCount => Line.Length;
+
+            public bool HasColumn(string name) => headerLookup.ContainsKey(name);
+
+            public bool LineHasColumn(string name)
+            {
+                if (!headerLookup.TryGetValue(name, out var index))
+                    return false;
+
+                return RawSplitLine.Count > index;
+            }
+
+            internal IList<ReadOnlyMemory<char>> RawSplitLine => rawSplitLine ??= SplitLineOptimized(rawMemory, options, memoryOptions);
+
+            public string[] Values => Line.Select(v => v.ToString()).ToArray();
+            public ReadOnlyMemory<char>[] ValuesMemory => Line;
+            public ReadOnlySpan<char> ValuesSpan => throw new NotSupportedException("ValuesSpan not supported for array access. Use GetSpan(int) or GetMemory(int) for individual values.");
+
+            private ReadOnlyMemory<char>[] Line
+            {
+                get
+                {
+                    if (parsedLine == null)
+                    {
+                        var raw = RawSplitLine;
+
+                        if (options.ValidateColumnCount && raw.Count != Headers.Length)
+                            throw new InvalidOperationException($"Expected {Headers.Length}, got {raw.Count} columns.");
+
+                        parsedLine = TrimOptimized(raw, options, memoryOptions);
+                    }
+
+                    return parsedLine;
+                }
+            }
+
+            string ICsvLine.this[string name] => GetSpan(name).ToString();
+            string ICsvLine.this[int index] => GetSpan(index).ToString();
+
+            public ReadOnlyMemory<char> GetMemory(string name)
+            {
+                if (!headerLookup.TryGetValue(name, out var index))
+                {
+                    if (options.ReturnEmptyForMissingColumn)
+                        return ReadOnlyMemory<char>.Empty;
+
+                    throw new ArgumentOutOfRangeException(nameof(name), name, $"Header '{name}' does not exist. Expected one of {string.Join("; ", Headers)}");
+                }
+
+                try
+                {
+                    return Line[index];
+                }
+                catch (IndexOutOfRangeException)
+                {
+                    throw new InvalidOperationException($"Invalid row, missing {name} header, expected {Headers.Length} columns, got {Line.Length} columns.");
+                }
+            }
+
+            public ReadOnlyMemory<char> GetMemory(int index) => Line[index];
+
+            public ReadOnlySpan<char> GetSpan(string name) => GetMemory(name).Span;
+            public ReadOnlySpan<char> GetSpan(int index) => GetMemory(index).Span;
+
+            public bool TryGetMemory(string name, out ReadOnlyMemory<char> value)
+            {
+                if (headerLookup.TryGetValue(name, out var index) && index < Line.Length)
+                {
+                    value = Line[index];
+                    return true;
+                }
+
+                value = ReadOnlyMemory<char>.Empty;
+                return false;
+            }
+
+            public bool TryGetMemory(int index, out ReadOnlyMemory<char> value)
+            {
+                if (index >= 0 && index < Line.Length)
+                {
+                    value = Line[index];
+                    return true;
+                }
+
+                value = ReadOnlyMemory<char>.Empty;
+                return false;
+            }
+
+            public bool TryGetSpan(string name, out ReadOnlySpan<char> value)
+            {
+                if (TryGetMemory(name, out var memory))
+                {
+                    value = memory.Span;
+                    return true;
+                }
+
+                value = ReadOnlySpan<char>.Empty;
+                return false;
+            }
+
+            public bool TryGetSpan(int index, out ReadOnlySpan<char> value)
+            {
+                if (TryGetMemory(index, out var memory))
+                {
+                    value = memory.Span;
+                    return true;
+                }
+
+                value = ReadOnlySpan<char>.Empty;
+                return false;
+            }
+
+            public override string ToString() => Raw;
+        }
+
+        private static IList<ReadOnlyMemory<char>> SplitLineOptimized(ReadOnlyMemory<char> line, CsvOptions options, CsvMemoryOptions memoryOptions)
+        {
+            var splitter = CsvLineSplitter.Get(options);
+            return splitter.Split(line, options);
+        }
+
+        private static ReadOnlyMemory<char>[] TrimOptimized(IList<ReadOnlyMemory<char>> line, CsvOptions options, CsvMemoryOptions memoryOptions)
+        {
+            var trimmed = new ReadOnlyMemory<char>[line.Count];
+
+            for (var i = 0; i < line.Count; i++)
+            {
+                var str = line[i];
+
+                if (options.TrimData)
+                    str = TrimMemory(str);
+
+                if (options.AllowEnclosedFieldValues && str.Length >= 2)
+                {
+                    var span = str.Span;
+                    if (span[0] == '"' && span[^1] == '"')
+                    {
+                        str = str.Slice(1, str.Length - 2).Unescape('"', '"');
+
+                        if (options.AllowBackSlashToEscapeQuote)
+                            str = str.Unescape('\\', '"');
+                    }
+                    else if (options.AllowSingleQuoteToEncloseFieldValues && span[0] == '\'' && span[^1] == '\'')
+                        str = str.Slice(1, str.Length - 2);
+                }
+
+                trimmed[i] = str;
+            }
+
+            return trimmed;
+        }
+
+        private static ReadOnlyMemory<char> TrimMemory(ReadOnlyMemory<char> memory)
+        {
+            var span = memory.Span;
+            int start = 0;
+            int end = span.Length - 1;
+
+            while (start <= end && char.IsWhiteSpace(span[start]))
+                start++;
+
+            while (end >= start && char.IsWhiteSpace(span[end]))
+                end--;
+
+            if (start > end)
+                return ReadOnlyMemory<char>.Empty;
+
+            return memory.Slice(start, end - start + 1);
+        }
+
+#endif
     }
 }
