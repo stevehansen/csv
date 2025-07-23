@@ -21,6 +21,7 @@ This is a .NET CSV parsing and writing library (`Csv`) that supports multiple ta
 
 - **`Csv/`** - Main library project containing all CSV functionality
 - **`Csv.Tests/`** - MSTest-based unit tests for the library
+- **`docs/`** - Documentation including PRDs (Product Requirement Documents) and implementation guides
 - **Solution** - Standard .NET solution with library + tests projects
 
 ### Key Features
@@ -77,3 +78,10 @@ CSV parsing behavior is controlled through `CsvOptions` which includes:
 - Memory vs string parsing
 - Row skipping and validation
 - Multiline field support
+
+## Documentation Guidelines
+
+### PRDs (Product Requirement Documents)
+- All PRDs should be placed in the `docs/` folder
+- Use descriptive names like `Feature-Name-PRD.md`
+- Include implementation documents alongside PRDs when available
