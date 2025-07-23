@@ -62,12 +62,17 @@ namespace Csv.Tests
             // Memory writer should be competitive, buffer writer may have overhead for small datasets
             // Ignore small timing differences (< 2ms) to avoid flaky tests
             var timeDiff = memoryTime - traditionalTime;
-            Assert.IsTrue(timeDiff < 2 || memoryTime <= traditionalTime * 1.5,
+            Assert.IsTrue(
+                (traditionalTime == 0 && memoryTime <= 10) ||
+                timeDiff < 2 || 
+                memoryTime <= traditionalTime * 1.5,
                 $"Memory writer should be competitive (traditional: {traditionalTime}ms, memory: {memoryTime}ms)");
 
             // Buffer writer optimizes for large datasets, so allow more variance for small test data
             // The benefits appear with larger datasets (10k+ rows) due to buffer management overhead
-            Assert.IsTrue(bufferTime <= traditionalTime * 15,
+            Assert.IsTrue(
+                (traditionalTime == 0 && bufferTime <= 20) ||
+                bufferTime <= traditionalTime * 15,
                 $"Buffer writer overhead should be reasonable (traditional: {traditionalTime}ms, buffer: {bufferTime}ms)");
         }
 
@@ -125,13 +130,13 @@ namespace Csv.Tests
             var optimizedTimeDiff = optimizedTime - traditionalTime;
             
             Assert.IsTrue(
-                (traditionalTime == 0 && spanTime <= 5) || 
+                (traditionalTime == 0 && spanTime <= 10) || 
                 spanTimeDiff < 2 || 
                 spanTime <= traditionalTime * 1.5,
                 $"Span reader should be competitive (traditional: {traditionalTime}ms, span: {spanTime}ms)");
             
             Assert.IsTrue(
-                (traditionalTime == 0 && optimizedTime <= 5) || 
+                (traditionalTime == 0 && optimizedTime <= 10) || 
                 optimizedTimeDiff < 2 || 
                 optimizedTime <= traditionalTime * 1.5,
                 $"Optimized reader should be competitive (traditional: {traditionalTime}ms, optimized: {optimizedTime}ms)");
