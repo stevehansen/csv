@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Text.RegularExpressions;
 
 #if NET8_0_OR_GREATER
 using System;
@@ -124,10 +123,6 @@ namespace Csv
             return str.Span;
         }
 
-        internal static string RegexMatch(SpanText str, string pattern)
-        {
-            return Regex.Match(new string(str), pattern).Value;
-        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static MemoryText Concat(MemoryText str1, string str2, MemoryText str3)
@@ -138,11 +133,6 @@ namespace Csv
 #else
     internal static class StringHelpers // NOTE: Extension methods are provided to reuse the same code
     {
-        [MethodImpl((MethodImplOptions)256 /*MethodImplOptions.AggressiveInlining*/)]
-        public static string RegexMatch(SpanText str, string pattern)
-        {
-            return Regex.Match(str, pattern).Value;
-        }
 
         [MethodImpl((MethodImplOptions)256 /*MethodImplOptions.AggressiveInlining*/)]
         public static string AsString(this MemoryText str)

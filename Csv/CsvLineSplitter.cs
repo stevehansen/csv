@@ -43,27 +43,105 @@ namespace Csv
                 return false;
             }
 
-            var regex = options.AllowBackSlashToEscapeQuote ? $@"\\?{quoteChar}+$" : $@"{quoteChar}+$";
 #if NET8_0_OR_GREATER
-            var trailingQuotes = StringHelpers.RegexMatch(value[1..], regex);
+            return IsUnterminatedQuotedValueCore(value[1..], quoteChar, options.AllowBackSlashToEscapeQuote, options.AllowNewLineInEnclosedFieldValues);
 #else
-            var trailingQuotes = StringHelpers.RegexMatch(value.Substring(1), regex);
+            return IsUnterminatedQuotedValueCore(value.Substring(1), quoteChar, options.AllowBackSlashToEscapeQuote, options.AllowNewLineInEnclosedFieldValues);
 #endif
-            // if the first trailing quote is escaped, ignore it
+        }
+
+        private static bool IsUnterminatedQuotedValueCore(SpanText value, char quoteChar, bool allowBackslashEscape, bool allowNewLineInEnclosedFieldValues)
+        {
 #if NET8_0_OR_GREATER
-            if (options.AllowBackSlashToEscapeQuote && trailingQuotes.StartsWith('\\'))
+            var span = value;
 #else
-            if (options.AllowBackSlashToEscapeQuote && trailingQuotes.StartsWith("\\"))
+            var span = value;
 #endif
+            // Empty after removing opening quote means just a single quote - unterminated
+            if (span.Length == 0)
+                return true;
+
+            // Check if there's any quote in the string
+            int lastQuoteIndex = -1;
+            for (int j = span.Length - 1; j >= 0; j--)
             {
-#if NET8_0_OR_GREATER
-                trailingQuotes = trailingQuotes[2..];
-#else
-                trailingQuotes = trailingQuotes.Substring(2);
-#endif
+                if (span[j] == quoteChar)
+                {
+                    lastQuoteIndex = j;
+                    break;
+                }
             }
-            // the value is properly terminated if there are an odd number of unescaped quotes at the end
-            return trailingQuotes.Length % 2 == 0;
+            
+            // No quotes at all means unterminated
+            if (lastQuoteIndex == -1)
+                return true;
+                
+            // If there's content after the last quote, it's considered terminated (though malformed)
+            if (lastQuoteIndex < span.Length - 1)
+                return false;
+            
+            // Count trailing quotes
+            int trailingQuoteCount = 0;
+            int i = span.Length - 1;
+            
+            while (i >= 0 && span[i] == quoteChar)
+            {
+                trailingQuoteCount++;
+                i--;
+            }
+            
+            // Check if the last quote is escaped by a backslash
+            if (allowBackslashEscape && i >= 0 && span[i] == '\\')
+            {
+                // Count preceding backslashes
+                int backslashCount = 0;
+                while (i >= 0 && span[i] == '\\')
+                {
+                    backslashCount++;
+                    i--;
+                }
+                
+                // If odd number of backslashes, the last quote is escaped
+                if (backslashCount % 2 == 1)
+                {
+                    // Remove the escaped quote from count
+                    trailingQuoteCount--;
+                    
+                    // If no quotes left after removing the escaped one, it's unterminated
+                    if (trailingQuoteCount == 0)
+                        return true;
+                }
+            }
+            
+            // In CSV, quotes are escaped by doubling them.
+            // When checking if a quoted value is unterminated (continues on next line),
+            // we need to determine if the trailing quotes indicate an incomplete field.
+            //
+            // There's an ambiguity when we have an even number of trailing quotes:
+            // - "field"" could be a complete field containing 'field"'
+            // - OR it could be the start of a multiline field like "field""\nsomething"
+            //
+            // When AllowNewLineInEnclosedFieldValues is enabled, we need to be more
+            // conservative and assume fields with even trailing quotes might continue.
+            //
+            // Standard behavior (when multiline is disabled):
+            // - 1 trailing quote = terminated (closing quote)
+            // - Even trailing quotes (2,4,6...) = terminated
+            // - Odd trailing quotes (3,5,7...) = unterminated
+            //
+            // Multiline behavior (when multiline is enabled):
+            // - 1 trailing quote = terminated (closing quote)
+            // - 2 trailing quotes = unterminated (might continue on next line)
+            // - 3+ trailing quotes: follow standard pattern
+            
+            if (trailingQuoteCount == 1)
+                return false; // always terminated - this is the closing quote
+                
+            if (allowNewLineInEnclosedFieldValues && trailingQuoteCount == 2)
+                return true; // unterminated - might continue on next line
+                
+            // For other cases: even = terminated, odd = unterminated
+            return trailingQuoteCount % 2 != 0;
         }
 
         public IList<MemoryText> Split(MemoryText line, CsvOptions options)

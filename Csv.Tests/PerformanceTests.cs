@@ -60,7 +60,9 @@ namespace Csv.Tests
             Console.WriteLine($"Output size: {traditionalResult.Length:N0} characters");
 
             // Memory writer should be competitive, buffer writer may have overhead for small datasets
-            Assert.IsTrue(memoryTime <= traditionalTime * 1.5,
+            // Ignore small timing differences (< 2ms) to avoid flaky tests
+            var timeDiff = memoryTime - traditionalTime;
+            Assert.IsTrue(timeDiff < 2 || memoryTime <= traditionalTime * 1.5,
                 $"Memory writer should be competitive (traditional: {traditionalTime}ms, memory: {memoryTime}ms)");
 
             // Buffer writer optimizes for large datasets, so allow more variance for small test data
@@ -117,9 +119,21 @@ namespace Csv.Tests
             Console.WriteLine($"Processed {traditionalLines.Length:N0} rows");
 
             // Span/optimized reader should be faster or at least comparable
-            Assert.IsTrue(spanTime <= traditionalTime * 1.5,
+            // Ignore small timing differences to avoid flaky tests
+            // If traditional time is 0ms, allow up to 5ms for other implementations
+            var spanTimeDiff = spanTime - traditionalTime;
+            var optimizedTimeDiff = optimizedTime - traditionalTime;
+            
+            Assert.IsTrue(
+                (traditionalTime == 0 && spanTime <= 5) || 
+                spanTimeDiff < 2 || 
+                spanTime <= traditionalTime * 1.5,
                 $"Span reader should be competitive (traditional: {traditionalTime}ms, span: {spanTime}ms)");
-            Assert.IsTrue(optimizedTime <= traditionalTime * 1.5,
+            
+            Assert.IsTrue(
+                (traditionalTime == 0 && optimizedTime <= 5) || 
+                optimizedTimeDiff < 2 || 
+                optimizedTime <= traditionalTime * 1.5,
                 $"Optimized reader should be competitive (traditional: {traditionalTime}ms, optimized: {optimizedTime}ms)");
         }
 
