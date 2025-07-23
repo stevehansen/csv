@@ -137,6 +137,30 @@ namespace Csv
                     InitializeOptions(lineAsMemory.AsSpan(), options);
                     var skipInitialLine = options.HeaderMode == HeaderMode.HeaderPresent;
 
+                    // For HeaderAbsent mode with multiline fields, we need to process the complete line first
+                    if (!skipInitialLine && options.AllowNewLineInEnclosedFieldValues)
+                    {
+                        // Process multiline fields to get the complete first data line
+                        var completeLineForHeaders = line;
+                        var tempSplitter = CsvLineSplitter.Get(options);
+                        var splitLine = tempSplitter.Split(lineAsMemory, options);
+                        
+                        while (splitLine.Any(f => CsvLineSplitter.IsUnterminatedQuotedValue(f.AsSpan(), options)))
+                        {
+                            var nextLine = reader.ReadLine();
+                            if (nextLine == null)
+                                break;
+                                
+                            completeLineForHeaders = StringHelpers.Concat(completeLineForHeaders.AsMemory(), options.NewLine, nextLine.AsMemory()).AsString();
+                            lineAsMemory = completeLineForHeaders.AsMemory();
+                            splitLine = tempSplitter.Split(lineAsMemory, options);
+                        }
+                        
+                        // Update line to the complete multiline version
+                        line = completeLineForHeaders;
+                        lineAsMemory = line.AsMemory();
+                    }
+
                     headers = skipInitialLine ? GetHeaders(lineAsMemory, options) : CreateDefaultHeaders(lineAsMemory, options);
 
                     try
@@ -180,7 +204,10 @@ namespace Csv
                 }
 
                 var record = new ReadLineSpan(headers, headerLookup, index, line, options);
-                if (options.AllowNewLineInEnclosedFieldValues)
+                // Only process multiline if we haven't already done it for header creation
+                var isFirstDataLineInHeaderAbsentMode = (headers != null && options.HeaderMode == HeaderMode.HeaderAbsent && 
+                                                         record.Index == (options.RowsToSkip + 1));
+                if (options.AllowNewLineInEnclosedFieldValues && !isFirstDataLineInHeaderAbsentMode)
                 {
                     while (record.RawSplitLine.Any(f => CsvLineSplitter.IsUnterminatedQuotedValue(f.AsSpan(), options)))
                     {
@@ -392,6 +419,30 @@ namespace Csv
                     InitializeOptions(lineAsMemory.AsSpan(), options);
                     var skipInitialLine = options.HeaderMode == HeaderMode.HeaderPresent;
 
+                    // For HeaderAbsent mode with multiline fields, we need to process the complete line first
+                    if (!skipInitialLine && options.AllowNewLineInEnclosedFieldValues)
+                    {
+                        // Process multiline fields to get the complete first data line
+                        var completeLineForHeaders = line;
+                        var tempSplitter = CsvLineSplitter.Get(options);
+                        var splitLine = tempSplitter.Split(lineAsMemory, options);
+                        
+                        while (splitLine.Any(f => CsvLineSplitter.IsUnterminatedQuotedValue(f.AsSpan(), options)))
+                        {
+                            var nextLine = reader.ReadLine();
+                            if (nextLine == null)
+                                break;
+                                
+                            completeLineForHeaders += options.NewLine + nextLine;
+                            lineAsMemory = completeLineForHeaders.AsMemory();
+                            splitLine = tempSplitter.Split(lineAsMemory, options);
+                        }
+                        
+                        // Update line to the complete multiline version
+                        line = completeLineForHeaders;
+                        lineAsMemory = line.AsMemory();
+                    }
+
                     headers = skipInitialLine ? GetHeaders(lineAsMemory, options) : CreateDefaultHeaders(lineAsMemory, options);
 
                     try
@@ -436,7 +487,10 @@ namespace Csv
                 }
 
                 var record = new ReadLine(headers, headerLookup, index, line, options);
-                if (options.AllowNewLineInEnclosedFieldValues)
+                // Only process multiline if we haven't already done it for header creation
+                var isFirstDataLineInHeaderAbsentMode = (headers != null && options.HeaderMode == HeaderMode.HeaderAbsent && 
+                                                         record.Index == (options.RowsToSkip + 1));
+                if (options.AllowNewLineInEnclosedFieldValues && !isFirstDataLineInHeaderAbsentMode)
                 {
                     // TODO: Move to CsvLineSplitter?
                     // TODO: Shouldn't we only check the last part?
