@@ -1,5 +1,13 @@
 # csv
+
+[![NuGet Version](https://img.shields.io/nuget/v/Csv.svg?style=flat)](https://www.nuget.org/packages/Csv/)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/Csv.svg?style=flat)](https://www.nuget.org/packages/Csv/)
+[![Build status](https://ci.appveyor.com/api/projects/status/d1m0vu1n7idsk7uu?svg=true)](https://ci.appveyor.com/project/SteveHansen/csv)
+[![codecov](https://codecov.io/gh/stevehansen/csv/branch/master/graph/badge.svg)](https://codecov.io/gh/stevehansen/csv)
+
 Really simple csv library
+
+This library targets .NET Standard 2.0, .NET 8.0, and .NET 9.0, with enhanced Span/Memory APIs available for .NET 8.0+.
 
 ## Install
 
@@ -32,10 +40,26 @@ foreach (var line in CsvReader.ReadFromText(csv))
 
 `CsvReader` also supports reading from a `TextReader` (`CsvReader.Read(TextReader, CsvOptions)`) or a `Stream` (`CsvReader.ReadFromStream(Stream, CsvOptions)`)
 
-For .NET Standard 2.1 or .NET 5+ the library exposes `CsvReader.ReadAsync` and
-`CsvReader.ReadFromStreamAsync` which return `IAsyncEnumerable<ICsvLine>`.
-There is also `CsvReader.ReadFromMemory` to read from a `ReadOnlyMemory<char>`
-without allocating intermediate strings.
+For .NET 8.0+ the library exposes:
+- `CsvReader.ReadAsync` and `CsvReader.ReadFromStreamAsync` which return `IAsyncEnumerable<ICsvLine>`
+- `CsvReader.ReadFromMemory` to read from a `ReadOnlyMemory<char>` without allocating intermediate strings
+- `CsvReader.ReadAsSpan`, `CsvReader.ReadFromStreamAsSpan`, and `CsvReader.ReadFromTextAsSpan` which return `IEnumerable<ICsvLineSpan>` for zero-allocation Span/Memory access to CSV data
+- `CsvReader.ReadFromMemoryOptimized` with `CsvMemoryOptions` for high-performance scenarios using ArrayPool-based buffering
+
+#### High-performance reading with Span/Memory (.NET 8.0+)
+
+```csharp
+var csv = File.ReadAllText("sample.csv");
+foreach (var line in CsvReader.ReadFromTextAsSpan(csv))
+{
+    // Access data as ReadOnlySpan<char> for zero allocations
+    ReadOnlySpan<char> firstCell = line.GetSpan(0);
+    ReadOnlySpan<char> byName = line.GetSpan("Column name");
+
+    // Or as ReadOnlyMemory<char> if you need to store references
+    ReadOnlyMemory<char> cellMemory = line.GetMemory(0);
+}
+```
 
 `CsvOptions` can be used to configure the csv parsing:
 
@@ -93,10 +117,13 @@ passing a `CancellationToken`.
   int col_length = -1)` – get a rectangular subset of the data.
 
 
-## Build status
+## Status
+
+[![NuGet Version](https://img.shields.io/nuget/v/Csv.svg?style=flat)](https://www.nuget.org/packages/Csv/)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/Csv.svg?style=flat)](https://www.nuget.org/packages/Csv/)
 [![Build status](https://ci.appveyor.com/api/projects/status/d1m0vu1n7idsk7uu?svg=true)](https://ci.appveyor.com/project/SteveHansen/csv)
-[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fstevehansen%2Fcsv.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fstevehansen%2Fcsv?ref=badge_shield)
 [![codecov](https://codecov.io/gh/stevehansen/csv/branch/master/graph/badge.svg)](https://codecov.io/gh/stevehansen/csv)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fstevehansen%2Fcsv.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fstevehansen%2Fcsv?ref=badge_shield)
 
 
 ## License
