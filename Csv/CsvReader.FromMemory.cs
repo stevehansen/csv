@@ -41,9 +41,7 @@ namespace Csv
 
                     try
                     {
-                        headerLookup = headers
-                            .Select((h, idx) => (h, idx))
-                            .ToDictionary(h => h.Item1.AsString(), h => h.Item2, options.Comparer);
+                        headerLookup = CreateHeaderLookup(headers, options);
                     }
                     catch (ArgumentException)
                     {

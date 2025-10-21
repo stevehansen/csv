@@ -85,6 +85,13 @@ namespace Csv
         public bool AllowEnclosedFieldValues { get; set; } = true;
 
         /// <summary>
+        /// Automatically renames duplicate headers by appending a number (e.g., "A", "A2", "A3").
+        /// Empty headers are renamed to "Empty", "Empty2", etc. Defaults to <c>true</c>.
+        /// When set to <c>false</c>, duplicate headers will throw an InvalidOperationException.
+        /// </summary>
+        public bool AutoRenameHeaders { get; set; } = true;
+
+        /// <summary>
         /// The new line string to use when multiline field values are read, defaults to <see cref="Environment.NewLine"/>.
         /// </summary>
         /// <remarks>

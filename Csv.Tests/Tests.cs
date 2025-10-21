@@ -207,7 +207,7 @@ namespace Csv.Tests
         [TestCategory("CsvOptions")]
         public void AbsentHeaderWarnDuplicate()
         {
-            Assert.ThrowsExactly<InvalidOperationException>(() => _ = CsvReader.ReadFromText(",,\n4,5,6").ToArray());
+            Assert.ThrowsExactly<InvalidOperationException>(() => _ = CsvReader.ReadFromText(",,\n4,5,6", new CsvOptions { AutoRenameHeaders = false }).ToArray());
         }
 
         [TestMethod]
@@ -836,6 +836,187 @@ namespace Csv.Tests
             Assert.HasCount(sync.Length, asyncLines);
             for (var i = 0; i < sync.Length; i++)
                 CollectionAssert.AreEqual(sync[i].Values, asyncLines[i].Values);
+        }
+
+        [TestMethod]
+        [TestCategory("AutoRenameHeaders")]
+        public void AutoRenameHeaders_EmptyHeaders_AreRenamedToEmpty()
+        {
+            // Arrange
+            var csv = "A;;B;;\n1;2;3;4;5";
+
+            // Act
+            var lines = CsvReader.ReadFromText(csv, new CsvOptions { Separator = ';' }).ToArray();
+
+            // Assert
+            Assert.HasCount(1, lines);
+            var headers = lines[0].Headers;
+            Assert.AreEqual("A", headers[0]);
+            Assert.AreEqual("Empty", headers[1]);
+            Assert.AreEqual("B", headers[2]);
+            Assert.AreEqual("Empty2", headers[3]);
+            Assert.AreEqual("Empty3", headers[4]);
+
+            // Verify data can be accessed by renamed headers
+            Assert.AreEqual("1", lines[0]["A"]);
+            Assert.AreEqual("2", lines[0]["Empty"]);
+            Assert.AreEqual("3", lines[0]["B"]);
+            Assert.AreEqual("4", lines[0]["Empty2"]);
+            Assert.AreEqual("5", lines[0]["Empty3"]);
+        }
+
+        [TestMethod]
+        [TestCategory("AutoRenameHeaders")]
+        public void AutoRenameHeaders_DuplicateHeaders_AreAutoNumbered()
+        {
+            // Arrange
+            var csv = "A;A;B;A\n1;2;3;4";
+
+            // Act
+            var lines = CsvReader.ReadFromText(csv, new CsvOptions { Separator = ';' }).ToArray();
+
+            // Assert
+            Assert.HasCount(1, lines);
+            var headers = lines[0].Headers;
+            Assert.AreEqual("A", headers[0]);
+            Assert.AreEqual("A2", headers[1]);
+            Assert.AreEqual("B", headers[2]);
+            Assert.AreEqual("A3", headers[3]);
+
+            // Verify data can be accessed by renamed headers
+            Assert.AreEqual("1", lines[0]["A"]);
+            Assert.AreEqual("2", lines[0]["A2"]);
+            Assert.AreEqual("3", lines[0]["B"]);
+            Assert.AreEqual("4", lines[0]["A3"]);
+        }
+
+        [TestMethod]
+        [TestCategory("AutoRenameHeaders")]
+        public void AutoRenameHeaders_MixedEmptyAndDuplicates_AreHandledCorrectly()
+        {
+            // Arrange
+            var csv = "A;;A;B;;\n1;2;3;4;5";
+
+            // Act
+            var lines = CsvReader.ReadFromText(csv, new CsvOptions { Separator = ';' }).ToArray();
+
+            // Assert
+            Assert.HasCount(1, lines);
+            var headers = lines[0].Headers;
+            Assert.AreEqual("A", headers[0]);
+            Assert.AreEqual("Empty", headers[1]);
+            Assert.AreEqual("A2", headers[2]);
+            Assert.AreEqual("B", headers[3]);
+            Assert.AreEqual("Empty2", headers[4]);
+
+            // Verify data can be accessed
+            Assert.AreEqual("1", lines[0]["A"]);
+            Assert.AreEqual("2", lines[0]["Empty"]);
+            Assert.AreEqual("3", lines[0]["A2"]);
+            Assert.AreEqual("4", lines[0]["B"]);
+            Assert.AreEqual("5", lines[0]["Empty2"]);
+        }
+
+        [TestMethod]
+        [TestCategory("AutoRenameHeaders")]
+        public void AutoRenameHeaders_Disabled_ThrowsOnDuplicates()
+        {
+            // Arrange
+            var csv = "A;A;B\n1;2;3";
+
+            // Act & Assert
+            var ex = Assert.ThrowsExactly<InvalidOperationException>(() =>
+            {
+                var lines = CsvReader.ReadFromText(csv, new CsvOptions
+                {
+                    Separator = ';',
+                    AutoRenameHeaders = false
+                }).ToArray();
+            });
+
+            Assert.IsTrue(ex.Message.Contains("Duplicate headers detected"));
+        }
+
+        [TestMethod]
+        [TestCategory("AutoRenameHeaders")]
+        public void AutoRenameHeaders_Disabled_ThrowsOnEmptyDuplicates()
+        {
+            // Arrange
+            var csv = "A;;B;;\n1;2;3;4";
+
+            // Act & Assert
+            var ex = Assert.ThrowsExactly<InvalidOperationException>(() =>
+            {
+                var lines = CsvReader.ReadFromText(csv, new CsvOptions
+                {
+                    Separator = ';',
+                    AutoRenameHeaders = false
+                }).ToArray();
+            });
+
+            Assert.IsTrue(ex.Message.Contains("Duplicate headers detected"));
+        }
+
+        [TestMethod]
+        [TestCategory("AutoRenameHeaders")]
+        public void AutoRenameHeaders_TrailingEmptyColumns_WorksCorrectly()
+        {
+            // This test specifically addresses issue #95
+            var csv = "Type;Subtype;Channel;Result_code;Created_by;Created_at;;;;;\nOther;Other subtype;Example;0;username;2025-06-04;;;;;";
+
+            // Act
+            var lines = CsvReader.ReadFromText(csv, new CsvOptions { Separator = ';' }).ToArray();
+
+            // Assert
+            Assert.HasCount(1, lines);
+            var headers = lines[0].Headers;
+            Assert.AreEqual("Type", headers[0]);
+            Assert.AreEqual("Subtype", headers[1]);
+            Assert.AreEqual("Channel", headers[2]);
+            Assert.AreEqual("Result_code", headers[3]);
+            Assert.AreEqual("Created_by", headers[4]);
+            Assert.AreEqual("Created_at", headers[5]);
+            Assert.AreEqual("Empty", headers[6]);
+            Assert.AreEqual("Empty2", headers[7]);
+            Assert.AreEqual("Empty3", headers[8]);
+            Assert.AreEqual("Empty4", headers[9]);
+            Assert.AreEqual("Empty5", headers[10]);
+
+            // Verify data access
+            Assert.AreEqual("Other", lines[0]["Type"]);
+            Assert.AreEqual("Other subtype", lines[0]["Subtype"]);
+            Assert.AreEqual("Example", lines[0]["Channel"]);
+            Assert.AreEqual("0", lines[0]["Result_code"]);
+            Assert.AreEqual("username", lines[0]["Created_by"]);
+            Assert.AreEqual("2025-06-04", lines[0]["Created_at"]);
+        }
+
+        [TestMethod]
+        [TestCategory("AutoRenameHeaders")]
+        public void AutoRenameHeaders_CaseInsensitiveComparer_WorksCorrectly()
+        {
+            // Arrange
+            var csv = "A;a;B\n1;2;3";
+
+            // Act
+            var lines = CsvReader.ReadFromText(csv, new CsvOptions
+            {
+                Separator = ';',
+                Comparer = StringComparer.OrdinalIgnoreCase
+            }).ToArray();
+
+            // Assert - with case-insensitive comparer, "A" and "a" are duplicates
+            Assert.HasCount(1, lines);
+            var headers = lines[0].Headers;
+            Assert.AreEqual("A", headers[0]);
+            Assert.AreEqual("a2", headers[1]); // Preserves original case but adds number
+            Assert.AreEqual("B", headers[2]);
+
+            // Can access by either case
+            Assert.AreEqual("1", lines[0]["A"]);
+            Assert.AreEqual("1", lines[0]["a"]);
+            Assert.AreEqual("2", lines[0]["a2"]);
+            Assert.AreEqual("3", lines[0]["B"]);
         }
     }
 }

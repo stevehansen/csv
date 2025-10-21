@@ -165,9 +165,7 @@ namespace Csv
 
                     try
                     {
-                        headerLookup = headers
-                            .Select((h, idx) => (h, idx))
-                            .ToDictionary(h => h.Item1.AsString(), h => h.Item2, options.Comparer);
+                        headerLookup = CreateHeaderLookup(headers, options);
                     }
                     catch (ArgumentException)
                     {
@@ -288,9 +286,7 @@ namespace Csv
 
                     try
                     {
-                        headerLookup = headers
-                            .Select((h, idx) => (h, idx))
-                            .ToDictionary(h => h.Item1.ToString(), h => h.Item2, options.Comparer);
+                        headerLookup = CreateHeaderLookup(headers, options);
                     }
                     catch (ArgumentException)
                     {
@@ -447,9 +443,7 @@ namespace Csv
 
                     try
                     {
-                        headerLookup = headers
-                            .Select((h, idx) => Tuple.Create(h, idx))
-                            .ToDictionary(h => h.Item1.AsString(), h => h.Item2, options.Comparer);
+                        headerLookup = CreateHeaderLookup(headers, options);
                     }
                     catch (ArgumentException)
                     {
@@ -589,9 +583,7 @@ namespace Csv
 
                     try
                     {
-                        headerLookup = headers
-                            .Select((h, idx) => (h, idx))
-                            .ToDictionary(h => h.Item1.AsString(), h => h.Item2, options.Comparer);
+                        headerLookup = CreateHeaderLookup(headers, options);
                     }
                     catch (ArgumentException)
                     {
@@ -674,6 +666,66 @@ namespace Csv
         private static MemoryText[] GetHeaders(MemoryText line, CsvOptions options)
         {
             return Trim(SplitLine(line, options), options);
+        }
+
+        private static Dictionary<string, int> CreateHeaderLookup(MemoryText[] headers, CsvOptions options)
+        {
+            if (!options.AutoRenameHeaders)
+            {
+                // Original behavior: throw on duplicates
+#if NET8_0_OR_GREATER
+                return headers
+                    .Select((h, idx) => (h, idx))
+                    .ToDictionary(h => h.Item1.AsString(), h => h.Item2, options.Comparer);
+#else
+                return headers
+                    .Select((h, idx) => Tuple.Create(h, idx))
+                    .ToDictionary(h => h.Item1.AsString(), h => h.Item2, options.Comparer);
+#endif
+            }
+
+            // New behavior: auto-rename duplicates and empty headers
+            var headerLookup = new Dictionary<string, int>(options.Comparer ?? StringComparer.Ordinal);
+            var headerCounts = new Dictionary<string, int>(options.Comparer ?? StringComparer.Ordinal);
+
+            for (var i = 0; i < headers.Length; i++)
+            {
+                var headerText = headers[i].AsString();
+
+                // Replace empty headers with "Empty"
+                if (string.IsNullOrWhiteSpace(headerText))
+                {
+                    headerText = "Empty";
+                }
+
+                // Check if we've seen this header before
+                if (headerCounts.TryGetValue(headerText, out var count))
+                {
+                    // Increment the count and create a unique name
+                    count++;
+                    headerCounts[headerText] = count;
+                    var uniqueName = $"{headerText}{count}";
+
+                    // Update the header in the array
+                    headers[i] = uniqueName.AsMemory();
+                    headerLookup[uniqueName] = i;
+                }
+                else
+                {
+                    // First occurrence of this header
+                    headerCounts[headerText] = 1;
+
+                    // Update the header in the array if it was empty
+                    if (headers[i].AsString() != headerText)
+                    {
+                        headers[i] = headerText.AsMemory();
+                    }
+
+                    headerLookup[headerText] = i;
+                }
+            }
+
+            return headerLookup;
         }
 
         private static void InitializeOptions(SpanText line, CsvOptions options)

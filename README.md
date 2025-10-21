@@ -72,6 +72,7 @@ var options = new CsvOptions // Defaults
     TrimData = false, // Can be used to trim each cell
     Comparer = null, // Can be used for case-insensitive comparison for names
     HeaderMode = HeaderMode.HeaderPresent, // Assumes first row is a header row
+    AutoRenameHeaders = true, // Automatically renames duplicate headers (e.g., "A", "A2", "A3") and converts empty headers to "Empty", "Empty2", etc. Set to false to throw on duplicates.
     ValidateColumnCount = false, // Checks each row immediately for column count
     ReturnEmptyForMissingColumn = false, // Allows for accessing invalid column names
     Aliases = null, // A collection of alternative column names
