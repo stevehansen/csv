@@ -21,37 +21,61 @@ namespace Csv
     public static class CsvWriter
     {
         /// <summary>
+        /// Writes the lines to the writer without headers. Column count is determined from the first data line.
+        /// </summary>
+        /// <param name="writer">The text writer to write the data to.</param>
+        /// <param name="lines">The lines with data that should be written.</param>
+        /// <param name="separator">The separator to use between columns (comma, semicolon, tab, ...)</param>
+        public static void Write(TextWriter writer, IEnumerable<string[]> lines, char separator = ',') =>
+            Write(writer, null, lines, separator, skipHeaderRow: true);
+
+        /// <summary>
         /// Writes the lines to the writer.
         /// </summary>
         /// <param name="writer">The text writer to write the data to.</param>
-        /// <param name="headers">The headers that should be used for the first line, determines the number of columns.</param>
+        /// <param name="headers">The headers that should be used for the first line, determines the number of columns. Can be null if skipHeaderRow is true.</param>
         /// <param name="lines">The lines with data that should be written.</param>
         /// <param name="separator">The separator to use between columns (comma, semicolon, tab, ...)</param>
         /// <param name="skipHeaderRow">Indicate whether the header row should be skipped, defaults to <c>false</c>.</param>
-        public static void Write(TextWriter writer, string[] headers, IEnumerable<string[]> lines, char separator = ',', bool skipHeaderRow = false)
+        public static void Write(TextWriter writer, string[]? headers, IEnumerable<string[]> lines, char separator = ',', bool skipHeaderRow = false)
         {
             if (writer == null)
                 throw new ArgumentNullException(nameof(writer));
-            if (headers == null)
+            if (headers == null && !skipHeaderRow)
                 throw new ArgumentNullException(nameof(headers));
             if (lines == null)
                 throw new ArgumentNullException(nameof(lines));
 
-            var columnCount = headers.Length;
             if (!skipHeaderRow)
-                WriteLine(writer, headers, columnCount, separator);
-            foreach (var line in lines)
-                WriteLine(writer, line, columnCount, separator);
+            {
+                WriteLine(writer, headers!, headers!.Length, separator);
+            }
+
+            using var lineEnumerator = lines.GetEnumerator();
+            if (!lineEnumerator.MoveNext())
+                return;
+            var columnCount = headers?.Length ?? lineEnumerator.Current.Length;
+            WriteLine(writer, lineEnumerator.Current, columnCount, separator);
+            while (lineEnumerator.MoveNext())
+                WriteLine(writer, lineEnumerator.Current, columnCount, separator);
         }
+
+        /// <summary>
+        /// Writes the lines without headers and returns the result. Column count is determined from the first data line.
+        /// </summary>
+        /// <param name="lines">The lines with data that should be written.</param>
+        /// <param name="separator">The separator to use between columns (comma, semicolon, tab, ...)</param>
+        public static string WriteToText(IEnumerable<string[]> lines, char separator = ',') =>
+            WriteToText(null, lines, separator, skipHeaderRow: true);
 
         /// <summary>
         /// Writes the lines and return the result.
         /// </summary>
-        /// <param name="headers">The headers that should be used for the first line, determines the number of columns.</param>
+        /// <param name="headers">The headers that should be used for the first line, determines the number of columns. Can be null if skipHeaderRow is true.</param>
         /// <param name="lines">The lines with data that should be written.</param>
         /// <param name="separator">The separator to use between columns (comma, semicolon, tab, ...)</param>
         /// <param name="skipHeaderRow">Indicate whether the header row should be skipped, defaults to <c>false</c>.</param>
-        public static string WriteToText(string[] headers, IEnumerable<string[]> lines, char separator = ',', bool skipHeaderRow = false)
+        public static string WriteToText(string[]? headers, IEnumerable<string[]> lines, char separator = ',', bool skipHeaderRow = false)
         {
             using (var writer = new StringWriter())
             {
@@ -64,34 +88,50 @@ namespace Csv
 #if NET8_0_OR_GREATER
 
         /// <summary>
+        /// Writes the lines to the writer without headers using memory-efficient ReadOnlyMemory&lt;char&gt; arrays. Column count is determined from the first data line.
+        /// </summary>
+        /// <param name="writer">The text writer to write the data to.</param>
+        /// <param name="lines">The lines with data that should be written.</param>
+        /// <param name="separator">The separator to use between columns (comma, semicolon, tab, ...)</param>
+        public static void Write(TextWriter writer, IEnumerable<ReadOnlyMemory<char>[]> lines, char separator = ',') =>
+            Write(writer, null, lines, separator, skipHeaderRow: true);
+
+        /// <summary>
         /// Writes the lines to the writer using memory-efficient ReadOnlyMemory&lt;char&gt; arrays.
         /// </summary>
         /// <param name="writer">The text writer to write the data to.</param>
-        /// <param name="headers">The headers that should be used for the first line, determines the number of columns.</param>
+        /// <param name="headers">The headers that should be used for the first line, determines the number of columns. Can be null if skipHeaderRow is true.</param>
         /// <param name="lines">The lines with data that should be written.</param>
         /// <param name="separator">The separator to use between columns (comma, semicolon, tab, ...)</param>
         /// <param name="skipHeaderRow">Indicate whether the header row should be skipped, defaults to <c>false</c>.</param>
-        public static void Write(TextWriter writer, ReadOnlyMemory<char>[] headers, IEnumerable<ReadOnlyMemory<char>[]> lines, char separator = ',', bool skipHeaderRow = false)
+        public static void Write(TextWriter writer, ReadOnlyMemory<char>[]? headers, IEnumerable<ReadOnlyMemory<char>[]> lines, char separator = ',', bool skipHeaderRow = false)
         {
             if (writer == null)
                 throw new ArgumentNullException(nameof(writer));
-            if (headers == null)
+            if (headers == null && !skipHeaderRow)
                 throw new ArgumentNullException(nameof(headers));
             if (lines == null)
                 throw new ArgumentNullException(nameof(lines));
 
-            var columnCount = headers.Length;
             if (!skipHeaderRow)
-                WriteLineMemory(writer, headers, columnCount, separator);
-            foreach (var line in lines)
-                WriteLineMemory(writer, line, columnCount, separator);
+            {
+                WriteLineMemory(writer, headers!, headers!.Length, separator);
+            }
+
+            using var lineEnumerator = lines.GetEnumerator();
+            if (!lineEnumerator.MoveNext())
+                return;
+            var columnCount = headers?.Length ?? lineEnumerator.Current.Length;
+            WriteLineMemory(writer, lineEnumerator.Current, columnCount, separator);
+            while (lineEnumerator.MoveNext())
+                WriteLineMemory(writer, lineEnumerator.Current, columnCount, separator);
         }
 
         /// <summary>
         /// Writes the lines to the writer using memory-efficient ReadOnlySpan&lt;char&gt; headers.
         /// </summary>
         /// <param name="writer">The text writer to write the data to.</param>
-        /// <param name="headers">The headers that should be used for the first line, determines the number of columns.</param>
+        /// <param name="headers">The headers that should be used for the first line, determines the number of columns. Can be empty if skipHeaderRow is true.</param>
         /// <param name="lines">The lines with data that should be written.</param>
         /// <param name="separator">The separator to use between columns (comma, semicolon, tab, ...)</param>
         /// <param name="skipHeaderRow">Indicate whether the header row should be skipped, defaults to <c>false</c>.</param>
@@ -99,24 +139,41 @@ namespace Csv
         {
             if (writer == null)
                 throw new ArgumentNullException(nameof(writer));
+            if (headers.Length == 0 && !skipHeaderRow)
+                throw new ArgumentException("Headers cannot be empty when skipHeaderRow is false.", nameof(headers));
             if (lines == null)
                 throw new ArgumentNullException(nameof(lines));
 
-            var columnCount = headers.Length;
             if (!skipHeaderRow)
-                WriteLineMemorySpan(writer, headers, columnCount, separator);
-            foreach (var line in lines)
-                WriteLineMemory(writer, line, columnCount, separator);
+            {
+                WriteLineMemorySpan(writer, headers, headers.Length, separator);
+            }
+
+            using var lineEnumerator = lines.GetEnumerator();
+            if (!lineEnumerator.MoveNext())
+                return;
+            var columnCount = headers.Length > 0 ? headers.Length : lineEnumerator.Current.Length;
+            WriteLineMemory(writer, lineEnumerator.Current, columnCount, separator);
+            while (lineEnumerator.MoveNext())
+                WriteLineMemory(writer, lineEnumerator.Current, columnCount, separator);
         }
+
+        /// <summary>
+        /// Writes the lines without headers and returns the result using memory-efficient operations. Column count is determined from the first data line.
+        /// </summary>
+        /// <param name="lines">The lines with data that should be written.</param>
+        /// <param name="separator">The separator to use between columns (comma, semicolon, tab, ...)</param>
+        public static string WriteToText(IEnumerable<ReadOnlyMemory<char>[]> lines, char separator = ',') =>
+            WriteToText(null, lines, separator, skipHeaderRow: true);
 
         /// <summary>
         /// Writes the lines and return the result using memory-efficient operations.
         /// </summary>
-        /// <param name="headers">The headers that should be used for the first line, determines the number of columns.</param>
+        /// <param name="headers">The headers that should be used for the first line, determines the number of columns. Can be null if skipHeaderRow is true.</param>
         /// <param name="lines">The lines with data that should be written.</param>
         /// <param name="separator">The separator to use between columns (comma, semicolon, tab, ...)</param>
         /// <param name="skipHeaderRow">Indicate whether the header row should be skipped, defaults to <c>false</c>.</param>
-        public static string WriteToText(ReadOnlyMemory<char>[] headers, IEnumerable<ReadOnlyMemory<char>[]> lines, char separator = ',', bool skipHeaderRow = false)
+        public static string WriteToText(ReadOnlyMemory<char>[]? headers, IEnumerable<ReadOnlyMemory<char>[]> lines, char separator = ',', bool skipHeaderRow = false)
         {
             using (var writer = new StringWriter())
             {
@@ -166,61 +223,92 @@ namespace Csv
 #if NET8_0_OR_GREATER
 
         /// <summary>
+        /// Asynchronously writes the lines to the writer without headers. Column count is determined from the first data line.
+        /// </summary>
+        /// <param name="writer">The text writer to write the data to.</param>
+        /// <param name="lines">The lines with data that should be written.</param>
+        /// <param name="separator">The separator to use between columns (comma, semicolon, tab, ...)</param>
+        public static Task WriteAsync(TextWriter writer, IAsyncEnumerable<string[]> lines, char separator = ',') =>
+            WriteAsync(writer, null, lines, separator, skipHeaderRow: true, CancellationToken.None);
+
+        /// <summary>
         /// Writes the lines to the writer.
         /// </summary>
         /// <param name="writer">The text writer to write the data to.</param>
-        /// <param name="headers">The headers that should be used for the first line, determines the number of columns.</param>
+        /// <param name="headers">The headers that should be used for the first line, determines the number of columns. Can be null if skipHeaderRow is true.</param>
         /// <param name="lines">The lines with data that should be written.</param>
         /// <param name="separator">The separator to use between columns (comma, semicolon, tab, ...)</param>
         /// <param name="skipHeaderRow">Indicate whether the header row should be skipped, defaults to <c>false</c>.</param>
-        public static async Task WriteAsync(TextWriter writer, string[] headers, IAsyncEnumerable<string[]> lines, char separator = ',', bool skipHeaderRow = false) =>
+        public static async Task WriteAsync(TextWriter writer, string[]? headers, IAsyncEnumerable<string[]> lines, char separator = ',', bool skipHeaderRow = false) =>
             await WriteAsync(writer, headers, lines, separator, skipHeaderRow, CancellationToken.None);
 
         /// <summary>
         /// Writes the lines to the writer.
         /// </summary>
         /// <param name="writer">The text writer to write the data to.</param>
-        /// <param name="headers">The headers that should be used for the first line, determines the number of columns.</param>
+        /// <param name="headers">The headers that should be used for the first line, determines the number of columns. Can be null if skipHeaderRow is true.</param>
         /// <param name="lines">The lines with data that should be written.</param>
         /// <param name="separator">The separator to use between columns (comma, semicolon, tab, ...)</param>
         /// <param name="skipHeaderRow">Indicate whether the header row should be skipped, defaults to <c>false</c>.</param>
         /// <param name="cancellationToken">The cancellation token to use.</param>
-        public static async Task WriteAsync(TextWriter writer, string[] headers, IAsyncEnumerable<string[]> lines, char separator = ',', bool skipHeaderRow = false,
+        public static async Task WriteAsync(TextWriter writer, string[]? headers, IAsyncEnumerable<string[]> lines, char separator = ',', bool skipHeaderRow = false,
             CancellationToken cancellationToken = default)
         {
             if (writer == null)
                 throw new ArgumentNullException(nameof(writer));
-            if (headers == null)
+            if (headers == null && !skipHeaderRow)
                 throw new ArgumentNullException(nameof(headers));
             if (lines == null)
                 throw new ArgumentNullException(nameof(lines));
 
-            var columnCount = headers.Length;
             if (!skipHeaderRow)
-                WriteLine(writer, headers, columnCount, separator);
-            if (cancellationToken.CanBeCanceled)
             {
-                await foreach (var line in lines.WithCancellation(cancellationToken))
+                WriteLine(writer, headers!, headers!.Length, separator);
+            }
+
+            var enumerator = lines.GetAsyncEnumerator(cancellationToken);
+            try
+            {
+                if (!await enumerator.MoveNextAsync())
+                    return;
+                var columnCount = headers?.Length ?? enumerator.Current.Length;
+                WriteLine(writer, enumerator.Current, columnCount, separator);
+                if (cancellationToken.CanBeCanceled)
                 {
-                    WriteLine(writer, line, columnCount, separator);
-                    cancellationToken.ThrowIfCancellationRequested();
+                    while (await enumerator.MoveNextAsync())
+                    {
+                        WriteLine(writer, enumerator.Current, columnCount, separator);
+                        cancellationToken.ThrowIfCancellationRequested();
+                    }
+                }
+                else
+                {
+                    while (await enumerator.MoveNextAsync())
+                        WriteLine(writer, enumerator.Current, columnCount, separator);
                 }
             }
-            else // no cancellation token, use fast iteration
+            finally
             {
-                await foreach (var line in lines)
-                    WriteLine(writer, line, columnCount, separator);
+                await enumerator.DisposeAsync();
             }
         }
 
         /// <summary>
+        /// Asynchronously writes the lines without headers and returns the result. Column count is determined from the first data line.
+        /// </summary>
+        /// <param name="lines">The lines with data that should be written.</param>
+        /// <param name="separator">The separator to use between columns (comma, semicolon, tab, ...)</param>
+        public static Task<string> WriteToTextAsync(IAsyncEnumerable<string[]> lines, char separator = ',') =>
+            WriteToTextAsync(null, lines, separator, skipHeaderRow: true);
+
+        /// <summary>
         /// Writes the lines and return the result.
         /// </summary>
-        /// <param name="headers">The headers that should be used for the first line, determines the number of columns.</param>
+        /// <param name="headers">The headers that should be used for the first line, determines the number of columns. Can be null if skipHeaderRow is true.</param>
         /// <param name="lines">The lines with data that should be written.</param>
         /// <param name="separator">The separator to use between columns (comma, semicolon, tab, ...)</param>
         /// <param name="skipHeaderRow">Indicate whether the header row should be skipped, defaults to <c>false</c>.</param>
-        public static async Task<string> WriteToTextAsync(string[] headers, IAsyncEnumerable<string[]> lines, char separator = ',', bool skipHeaderRow = false)
+        public static async Task<string> WriteToTextAsync(string[]? headers, IAsyncEnumerable<string[]> lines, char separator = ',', bool skipHeaderRow = false)
         {
             await using var writer = new StringWriter();
             await WriteAsync(writer, headers, lines, separator, skipHeaderRow);
@@ -228,62 +316,92 @@ namespace Csv
         }
 
         /// <summary>
+        /// Asynchronously writes the lines to the writer without headers using memory-efficient ReadOnlyMemory&lt;char&gt; arrays. Column count is determined from the first data line.
+        /// </summary>
+        /// <param name="writer">The text writer to write the data to.</param>
+        /// <param name="lines">The lines with data that should be written.</param>
+        /// <param name="separator">The separator to use between columns (comma, semicolon, tab, ...)</param>
+        public static Task WriteAsync(TextWriter writer, IAsyncEnumerable<ReadOnlyMemory<char>[]> lines, char separator = ',') =>
+            WriteAsync(writer, null, lines, separator, skipHeaderRow: true, CancellationToken.None);
+
+        /// <summary>
         /// Asynchronously writes the lines to the writer using memory-efficient ReadOnlyMemory&lt;char&gt; arrays.
         /// </summary>
         /// <param name="writer">The text writer to write the data to.</param>
-        /// <param name="headers">The headers that should be used for the first line, determines the number of columns.</param>
+        /// <param name="headers">The headers that should be used for the first line, determines the number of columns. Can be null if skipHeaderRow is true.</param>
         /// <param name="lines">The lines with data that should be written.</param>
         /// <param name="separator">The separator to use between columns (comma, semicolon, tab, ...)</param>
         /// <param name="skipHeaderRow">Indicate whether the header row should be skipped, defaults to <c>false</c>.</param>
-        public static async Task WriteAsync(TextWriter writer, ReadOnlyMemory<char>[] headers, IAsyncEnumerable<ReadOnlyMemory<char>[]> lines, char separator = ',', bool skipHeaderRow = false) =>
+        public static async Task WriteAsync(TextWriter writer, ReadOnlyMemory<char>[]? headers, IAsyncEnumerable<ReadOnlyMemory<char>[]> lines, char separator = ',', bool skipHeaderRow = false) =>
             await WriteAsync(writer, headers, lines, separator, skipHeaderRow, CancellationToken.None);
 
         /// <summary>
         /// Asynchronously writes the lines to the writer using memory-efficient ReadOnlyMemory&lt;char&gt; arrays.
         /// </summary>
         /// <param name="writer">The text writer to write the data to.</param>
-        /// <param name="headers">The headers that should be used for the first line, determines the number of columns.</param>
+        /// <param name="headers">The headers that should be used for the first line, determines the number of columns. Can be null if skipHeaderRow is true.</param>
         /// <param name="lines">The lines with data that should be written.</param>
         /// <param name="separator">The separator to use between columns (comma, semicolon, tab, ...)</param>
         /// <param name="skipHeaderRow">Indicate whether the header row should be skipped, defaults to <c>false</c>.</param>
         /// <param name="cancellationToken">The cancellation token to use.</param>
-        public static async Task WriteAsync(TextWriter writer, ReadOnlyMemory<char>[] headers, IAsyncEnumerable<ReadOnlyMemory<char>[]> lines, char separator = ',', bool skipHeaderRow = false,
+        public static async Task WriteAsync(TextWriter writer, ReadOnlyMemory<char>[]? headers, IAsyncEnumerable<ReadOnlyMemory<char>[]> lines, char separator = ',', bool skipHeaderRow = false,
             CancellationToken cancellationToken = default)
         {
             if (writer == null)
                 throw new ArgumentNullException(nameof(writer));
-            if (headers == null)
+            if (headers == null && !skipHeaderRow)
                 throw new ArgumentNullException(nameof(headers));
             if (lines == null)
                 throw new ArgumentNullException(nameof(lines));
 
-            var columnCount = headers.Length;
             if (!skipHeaderRow)
-                WriteLineMemory(writer, headers, columnCount, separator);
-            
-            if (cancellationToken.CanBeCanceled)
             {
-                await foreach (var line in lines.WithCancellation(cancellationToken))
+                WriteLineMemory(writer, headers!, headers!.Length, separator);
+            }
+
+            var enumerator = lines.GetAsyncEnumerator(cancellationToken);
+            try
+            {
+                if (!await enumerator.MoveNextAsync())
+                    return;
+                var columnCount = headers?.Length ?? enumerator.Current.Length;
+                WriteLineMemory(writer, enumerator.Current, columnCount, separator);
+                if (cancellationToken.CanBeCanceled)
                 {
-                    WriteLineMemory(writer, line, columnCount, separator);
-                    cancellationToken.ThrowIfCancellationRequested();
+                    while (await enumerator.MoveNextAsync())
+                    {
+                        WriteLineMemory(writer, enumerator.Current, columnCount, separator);
+                        cancellationToken.ThrowIfCancellationRequested();
+                    }
+                }
+                else
+                {
+                    while (await enumerator.MoveNextAsync())
+                        WriteLineMemory(writer, enumerator.Current, columnCount, separator);
                 }
             }
-            else
+            finally
             {
-                await foreach (var line in lines)
-                    WriteLineMemory(writer, line, columnCount, separator);
+                await enumerator.DisposeAsync();
             }
         }
 
         /// <summary>
+        /// Asynchronously writes the lines without headers and returns the result using memory-efficient operations. Column count is determined from the first data line.
+        /// </summary>
+        /// <param name="lines">The lines with data that should be written.</param>
+        /// <param name="separator">The separator to use between columns (comma, semicolon, tab, ...)</param>
+        public static Task<string> WriteToTextAsync(IAsyncEnumerable<ReadOnlyMemory<char>[]> lines, char separator = ',') =>
+            WriteToTextAsync(null, lines, separator, skipHeaderRow: true);
+
+        /// <summary>
         /// Asynchronously writes the lines and return the result using memory-efficient operations.
         /// </summary>
-        /// <param name="headers">The headers that should be used for the first line, determines the number of columns.</param>
+        /// <param name="headers">The headers that should be used for the first line, determines the number of columns. Can be null if skipHeaderRow is true.</param>
         /// <param name="lines">The lines with data that should be written.</param>
         /// <param name="separator">The separator to use between columns (comma, semicolon, tab, ...)</param>
         /// <param name="skipHeaderRow">Indicate whether the header row should be skipped, defaults to <c>false</c>.</param>
-        public static async Task<string> WriteToTextAsync(ReadOnlyMemory<char>[] headers, IAsyncEnumerable<ReadOnlyMemory<char>[]> lines, char separator = ',', bool skipHeaderRow = false)
+        public static async Task<string> WriteToTextAsync(ReadOnlyMemory<char>[]? headers, IAsyncEnumerable<ReadOnlyMemory<char>[]> lines, char separator = ',', bool skipHeaderRow = false)
         {
             await using var writer = new StringWriter();
             await WriteAsync(writer, headers, lines, separator, skipHeaderRow);

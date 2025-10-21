@@ -84,9 +84,11 @@ var options = new CsvOptions // Defaults
 
 ### Writing a CSV file
 
+#### With headers
+
 ```csharp
 var columnNames = new [] { "Id", "Name" };
-var rows = new [] 
+var rows = new []
 {
     new [] { "0", "John Doe" },
     new [] { "1", "Jane Doe" }
@@ -102,9 +104,52 @@ Id,Name
 */
 ```
 
+#### Without headers
+
+```csharp
+var rows = new []
+{
+    new [] { "0", "John Doe" },
+    new [] { "1", "Jane Doe" }
+};
+// Convenience overload - no need to pass headers or skipHeaderRow
+var csv = CsvWriter.WriteToText(rows);
+File.WriteAllText("people.csv", csv);
+/*
+Writes the following to the file (no header row):
+
+0,John Doe
+1,Jane Doe
+*/
+```
+
+#### Skipping headers
+
+```csharp
+var columnNames = new [] { "Id", "Name" };
+var rows = new []
+{
+    new [] { "0", "John Doe" },
+    new [] { "1", "Jane Doe" }
+};
+// Pass null for headers and skipHeaderRow: true
+// Column count is determined from the first data row
+var csv = CsvWriter.WriteToText(null, rows, ',', skipHeaderRow: true);
+```
+
+#### Custom separator
+
+```csharp
+var rows = new [] { new [] { "A", "B" }, new [] { "C", "D" } };
+var csv = CsvWriter.WriteToText(rows, ';'); // semicolon separator
+// Output: A;B
+//         C;D
+```
+
 `CsvWriter` also includes asynchronous overloads (`WriteAsync` and
 `WriteToTextAsync`) which operate on `IAsyncEnumerable<string[]>` and support
-passing a `CancellationToken`.
+passing a `CancellationToken`. For .NET 8.0+, memory-efficient overloads using
+`ReadOnlyMemory<char>` are available.
 
 ### Helper extensions
 
