@@ -27,8 +27,8 @@ namespace Csv.Tests
         public void DetectComma()
         {
             var lines = CsvReader.ReadFromText("A,B\nC,D").ToArray();
-            Assert.AreEqual(1, lines.Length);
-            Assert.AreEqual(2, lines[0].Headers.Length);
+            Assert.HasCount(1, lines);
+            Assert.HasCount(2, lines[0].Headers);
             Assert.AreEqual(2, lines[0].ColumnCount);
             Assert.AreEqual(2, lines[0].Index);
             Assert.AreEqual("C", lines[0][0]);
@@ -41,8 +41,8 @@ namespace Csv.Tests
         public void DetectSemicolon()
         {
             var lines = CsvReader.ReadFromText("A;B\nC;D").ToArray();
-            Assert.AreEqual(1, lines.Length);
-            Assert.AreEqual(2, lines[0].Headers.Length);
+            Assert.HasCount(1, lines);
+            Assert.HasCount(2, lines[0].Headers);
             Assert.AreEqual("C", lines[0][0]);
             Assert.AreEqual("C", lines[0]["A"]);
             Assert.AreEqual("D", lines[0][1]);
@@ -53,8 +53,8 @@ namespace Csv.Tests
         public void DetectTab()
         {
             var lines = CsvReader.ReadFromText("A\tB\nC\tD").ToArray();
-            Assert.AreEqual(1, lines.Length);
-            Assert.AreEqual(2, lines[0].Headers.Length);
+            Assert.HasCount(1, lines);
+            Assert.HasCount(2, lines[0].Headers);
             Assert.AreEqual("C", lines[0][0]);
             Assert.AreEqual("C", lines[0]["A"]);
             Assert.AreEqual("D", lines[0][1]);
@@ -65,8 +65,8 @@ namespace Csv.Tests
         public void UnescapeHeaders()
         {
             var lines = CsvReader.ReadFromText("\"A\";\"B'\"\nC;D").ToArray();
-            Assert.AreEqual(1, lines.Length);
-            Assert.AreEqual(2, lines[0].Headers.Length);
+            Assert.HasCount(1, lines);
+            Assert.HasCount(2, lines[0].Headers);
             Assert.AreEqual("C", lines[0][0]);
             Assert.AreEqual("C", lines[0]["A"]);
             Assert.AreEqual("D", lines[0][1]);
@@ -78,8 +78,8 @@ namespace Csv.Tests
         public void CustomChar()
         {
             var lines = CsvReader.ReadFromText("A|B\nC|D", new CsvOptions { Separator = '|' }).ToArray();
-            Assert.AreEqual(1, lines.Length);
-            Assert.AreEqual(2, lines[0].Headers.Length);
+            Assert.HasCount(1, lines);
+            Assert.HasCount(2, lines[0].Headers);
             Assert.AreEqual("C", lines[0][0]);
             Assert.AreEqual("C", lines[0]["A"]);
             Assert.AreEqual("D", lines[0][1]);
@@ -91,7 +91,7 @@ namespace Csv.Tests
         public void TrimData()
         {
             var lines = CsvReader.ReadFromText(" A , B ,  C\n1   ,2   ,3\n   4,5,    6", new CsvOptions { TrimData = true }).ToArray();
-            Assert.AreEqual(2, lines.Length);
+            Assert.HasCount(2, lines);
             Assert.AreEqual("1", lines[0][0]);
             Assert.AreEqual("1", lines[0]["A"]);
             Assert.AreEqual(3, lines[1].Index);
@@ -122,7 +122,7 @@ namespace Csv.Tests
         public void RowsToSkip()
         {
             var lines = CsvReader.ReadFromText("skip this\nand this\nA,B,C\n1,2,3\n4,5,6", new CsvOptions { RowsToSkip = 2 }).ToArray();
-            Assert.AreEqual(2, lines.Length);
+            Assert.HasCount(2, lines);
             Assert.AreEqual("1", lines[0][0]);
             Assert.AreEqual("1", lines[0]["A"]);
             Assert.AreEqual("4", lines[1]["A"]);
@@ -135,7 +135,7 @@ namespace Csv.Tests
         public void SkipRow()
         {
             var lines = CsvReader.ReadFromText("//comment\nA,B,C\n1,2,3\n4,5,6", new CsvOptions { SkipRow = (row, idx) => row.StartsWith("//") }).ToArray();
-            Assert.AreEqual(2, lines.Length);
+            Assert.HasCount(2, lines);
             Assert.AreEqual("1", lines[0][0]);
             Assert.AreEqual("1", lines[0]["A"]);
             Assert.AreEqual("4", lines[1]["A"]);
@@ -148,7 +148,7 @@ namespace Csv.Tests
         public void SkipEmptyRows()
         {
             var lines = CsvReader.ReadFromText("\n#comment\nA,B,C\n1,2,3\n4,5,6\n\n").ToArray();
-            Assert.AreEqual(2, lines.Length);
+            Assert.HasCount(2, lines);
             Assert.AreEqual("1", lines[0][0]);
             Assert.AreEqual("1", lines[0]["A"]);
             Assert.AreEqual("4", lines[1]["A"]);
@@ -161,11 +161,11 @@ namespace Csv.Tests
         public void ValidateColumnCount()
         {
             var lines = CsvReader.ReadFromText("A,B,C\n1,2").ToArray();
-            Assert.AreEqual(1, lines.Length);
+            Assert.HasCount(1, lines);
             Assert.AreEqual("1", lines[0]["A"]);
 
             lines = [.. CsvReader.ReadFromText("A,B,C\n1,2", new CsvOptions { ValidateColumnCount = true })];
-            Assert.AreEqual(1, lines.Length);
+            Assert.HasCount(1, lines);
             Assert.ThrowsExactly<InvalidOperationException>(() => _ = lines[0]["A"]);
         }
 
@@ -182,7 +182,7 @@ namespace Csv.Tests
         {
             var lines = CsvReader.ReadFromText("1,2,3\n4,5,6", new CsvOptions { HeaderMode = HeaderMode.HeaderAbsent }).ToArray();
 
-            Assert.AreEqual(2, lines.Length);
+            Assert.HasCount(2, lines);
             Assert.AreEqual("1", lines[0][0]);
             Assert.AreEqual("2", lines[0][1]);
             Assert.AreEqual("3", lines[0][2]);
@@ -215,7 +215,7 @@ namespace Csv.Tests
         public void IgnoreHeaderCasing()
         {
             var lines = CsvReader.ReadFromText("A,B,C\n1,2,3\n4,5,6", new CsvOptions { Comparer = StringComparer.OrdinalIgnoreCase }).ToArray();
-            Assert.AreEqual(2, lines.Length);
+            Assert.HasCount(2, lines);
             Assert.AreEqual("1", lines[0][0]);
             Assert.AreEqual("1", lines[0]["a"]);
             Assert.AreEqual("4", lines[1]["a"]);
@@ -227,7 +227,7 @@ namespace Csv.Tests
         public void QuotedValueSameSeparator()
         {
             var lines = CsvReader.ReadFromText("A,B\n\"1,2,3\",4").ToArray();
-            Assert.AreEqual(1, lines.Length);
+            Assert.HasCount(1, lines);
             Assert.AreEqual("1,2,3", lines[0]["A"]);
             Assert.AreEqual("4", lines[0]["B"]);
         }
@@ -236,7 +236,7 @@ namespace Csv.Tests
         public void QuotedValueDifferentSeparator()
         {
             var lines = CsvReader.ReadFromText("A;B\n\"1,2,3\";4").ToArray();
-            Assert.AreEqual(1, lines.Length);
+            Assert.HasCount(1, lines);
             Assert.AreEqual("1,2,3", lines[0]["A"]);
         }
 
@@ -248,7 +248,7 @@ namespace Csv.Tests
                 AllowSingleQuoteToEncloseFieldValues = true
             };
             var lines = CsvReader.ReadFromText("A,B\n'1,2,3',4", options).ToArray();
-            Assert.AreEqual(1, lines.Length);
+            Assert.HasCount(1, lines);
             Assert.AreEqual("1,2,3", lines[0]["A"]);
             Assert.AreEqual("4", lines[0]["B"]);
         }
@@ -257,16 +257,16 @@ namespace Csv.Tests
         public void AllowEmptyValues()
         {
             var lines = CsvReader.ReadFromText("head1;head2\ntext1;").ToArray();
-            Assert.AreEqual(1, lines.Length);
+            Assert.HasCount(1, lines);
             Assert.AreEqual("", lines[0]["head2"]);
 
             lines = [.. CsvReader.ReadFromText("head1;head2;head3\ntext1;;text3")];
-            Assert.AreEqual(1, lines.Length);
+            Assert.HasCount(1, lines);
             Assert.AreEqual("", lines[0]["head2"]);
             Assert.AreEqual("text3", lines[0]["head3"]);
 
             lines = [.. CsvReader.ReadFromText("head1;head2;head3\ntext1;\"\";text3")];
-            Assert.AreEqual(1, lines.Length);
+            Assert.HasCount(1, lines);
             Assert.AreEqual("", lines[0]["head2"]);
             Assert.AreEqual("text3", lines[0]["head3"]);
         }
@@ -275,7 +275,7 @@ namespace Csv.Tests
         public void AllowWhitespaceValues()
         {
             var lines = CsvReader.ReadFromText("head1;head2;head3;head4\n;  ;text3;").ToArray();
-            Assert.AreEqual(1, lines.Length);
+            Assert.HasCount(1, lines);
             Assert.AreEqual("", lines[0]["head1"]);
             Assert.AreEqual("  ", lines[0]["head2"]);
             Assert.AreEqual("text3", lines[0]["head3"]);
@@ -286,7 +286,7 @@ namespace Csv.Tests
         public void AllowSingleQuoteInsideValue()
         {
             var lines = CsvReader.ReadFromText("a;b;c\n\"'\";a'b;'").ToArray();
-            Assert.AreEqual(1, lines.Length);
+            Assert.HasCount(1, lines);
             Assert.AreEqual("'", lines[0]["a"]);
             Assert.AreEqual("a'b", lines[0]["b"]);
             Assert.AreEqual("'", lines[0]["c"]);
@@ -311,7 +311,7 @@ namespace Csv.Tests
 ";
             var options = new CsvOptions { AllowNewLineInEnclosedFieldValues = true };
             var records = CsvReader.ReadFromText(input, options).ToArray();
-            Assert.AreEqual(2, records.Length);
+            Assert.HasCount(2, records);
             Assert.AreEqual(3, records[0].ColumnCount);
             Assert.AreEqual(3, records[1].ColumnCount);
         }
@@ -335,7 +335,7 @@ namespace Csv.Tests
 ";
             var options = new CsvOptions { AllowNewLineInEnclosedFieldValues = true };
             var records = CsvReader.ReadFromText(input, options).ToArray();
-            Assert.AreEqual(2, records.Length);
+            Assert.HasCount(2, records);
             Assert.AreEqual(3, records[0].ColumnCount);
             Assert.AreEqual(3, records[1].ColumnCount);
         }
@@ -359,7 +359,7 @@ namespace Csv.Tests
 ";
             var options = new CsvOptions { AllowNewLineInEnclosedFieldValues = true };
             var records = CsvReader.ReadFromText(input, options).ToArray();
-            Assert.AreEqual(2, records.Length);
+            Assert.HasCount(2, records);
             Assert.AreEqual(3, records[0].ColumnCount);
             Assert.AreEqual(string.Empty, records[0][2]);
             Assert.AreEqual(3, records[1].ColumnCount);
@@ -418,7 +418,7 @@ namespace Csv.Tests
         public void AllowDoubleQuoteInsideValue()
         {
             var lines = CsvReader.ReadFromText("a;b;c\n\"\"\"\";a'b;'").ToArray();
-            Assert.AreEqual(1, lines.Length);
+            Assert.HasCount(1, lines);
             Assert.AreEqual("\"", lines[0]["a"]);
             Assert.AreEqual("a'b", lines[0]["b"]);
             Assert.AreEqual("'", lines[0]["c"]);
@@ -430,7 +430,7 @@ namespace Csv.Tests
             var input = "h1\th2\th3\r\n1\t\"2\" is 2\t3";
             var options = new CsvOptions { Separator = '\t', AllowEnclosedFieldValues = false };
             var lines = CsvReader.ReadFromText(input, options).ToArray();
-            Assert.AreEqual(1, lines.Length);
+            Assert.HasCount(1, lines);
             Assert.AreEqual("\"2\" is 2", lines[0]["h2"]);
             Assert.AreEqual("3", lines[0]["h3"]);
         }
@@ -444,7 +444,7 @@ namespace Csv.Tests
                 NewLine = "\r\n"
             };
             var lines = CsvReader.ReadFromText("a,b,c\n\"one\"\"\ntwo\",a'b,'", options).ToArray();
-            Assert.AreEqual(1, lines.Length);
+            Assert.HasCount(1, lines);
             Assert.AreEqual("one\"\r\ntwo", lines[0]["a"]);
             Assert.AreEqual("a'b", lines[0]["b"]);
             Assert.AreEqual("'", lines[0]["c"]);
@@ -460,7 +460,7 @@ namespace Csv.Tests
                 AllowBackSlashToEscapeQuote = true
             };
             var lines = CsvReader.ReadFromText("a,b,c\n\"one\\\"\r\ntwo\",a'b,'", options).ToArray();
-            Assert.AreEqual(1, lines.Length);
+            Assert.HasCount(1, lines);
             Assert.AreEqual("one\"\ntwo", lines[0]["a"]);
             Assert.AreEqual("a'b", lines[0]["b"]);
             Assert.AreEqual("'", lines[0]["c"]);
@@ -474,7 +474,7 @@ namespace Csv.Tests
                 AllowBackSlashToEscapeQuote = true,
             };
             var lines = CsvReader.ReadFromText("a,b,c\n\"one\\\"two\",a'b,'", options).ToArray();
-            Assert.AreEqual(1, lines.Length);
+            Assert.HasCount(1, lines);
             Assert.AreEqual("one\"two", lines[0]["a"]);
             Assert.AreEqual("a'b", lines[0]["b"]);
             Assert.AreEqual("'", lines[0]["c"]);
@@ -484,7 +484,7 @@ namespace Csv.Tests
                 AllowBackSlashToEscapeQuote = false,
             };
             lines = [.. CsvReader.ReadFromText("a,b,c\n\"one\\\"two\",a'b,'", options)];
-            Assert.AreEqual(1, lines.Length);
+            Assert.HasCount(1, lines);
             Assert.AreEqual("one\\\"two", lines[0]["a"]);
             Assert.AreEqual("a'b", lines[0]["b"]);
             Assert.AreEqual("'", lines[0]["c"]);
@@ -499,7 +499,7 @@ namespace Csv.Tests
                 AllowNewLineInEnclosedFieldValues = true
             };
             var lines = CsvReader.ReadFromText("a,b,c,d\n'one\"\r\ntwo',a'b,'", options).ToArray();
-            Assert.AreEqual(1, lines.Length);
+            Assert.HasCount(1, lines);
             Assert.AreEqual($"one\"{Environment.NewLine}two", lines[0]["a"]);
             Assert.AreEqual("a'b", lines[0]["b"]);
             Assert.AreEqual("'", lines[0]["c"]);
@@ -509,7 +509,7 @@ namespace Csv.Tests
         public void UnmatchedDoubleQuoteAtEndOfStringShouldNotCauseError()
         {
             var lines = CsvReader.ReadFromText("a,b,c\none two,a'b,\"").ToArray();
-            Assert.AreEqual(1, lines.Length);
+            Assert.HasCount(1, lines);
             Assert.AreEqual($"one two", lines[0]["a"]);
             Assert.AreEqual("a'b", lines[0]["b"]);
             Assert.AreEqual("\"", lines[0]["c"]);
@@ -520,7 +520,7 @@ namespace Csv.Tests
         {
             var reader = new StringReader("a;b;c\n\"\"\"\";a'b;'");
             var lines = CsvReader.Read(reader).ToArray();
-            Assert.AreEqual(1, lines.Length);
+            Assert.HasCount(1, lines);
             Assert.AreEqual("\"", lines[0]["a"]);
             Assert.AreEqual("a'b", lines[0]["b"]);
             Assert.AreEqual("'", lines[0]["c"]);
@@ -531,7 +531,7 @@ namespace Csv.Tests
         {
             var stream = new MemoryStream(Encoding.UTF8.GetBytes("a;b;c\n\"\"\"\";a'b;'"));
             var lines = CsvReader.ReadFromStream(stream).ToArray();
-            Assert.AreEqual(1, lines.Length);
+            Assert.HasCount(1, lines);
             Assert.AreEqual("\"", lines[0]["a"]);
             Assert.AreEqual("a'b", lines[0]["b"]);
             Assert.AreEqual("'", lines[0]["c"]);
@@ -541,7 +541,7 @@ namespace Csv.Tests
         public void TestAlias()
         {
             var lines = CsvReader.ReadFromText("a;b;c\n\"\"\"\";a'b;'", new CsvOptions { Aliases = [["d", "a"]] }).ToArray();
-            Assert.AreEqual(1, lines.Length);
+            Assert.HasCount(1, lines);
             Assert.AreEqual("\"", lines[0]["a"]);
             Assert.AreEqual("\"", lines[0]["d"]);
             Assert.IsTrue(lines[0].HasColumn("a"));
@@ -555,7 +555,7 @@ namespace Csv.Tests
         public void TestAliasAndValidateColumnCount()
         {
             var lines = CsvReader.ReadFromText("a;b;c\n\"\"\"\";a'b;'", new CsvOptions { Aliases = [["d", "a"]], ValidateColumnCount = true }).ToArray();
-            Assert.AreEqual(1, lines.Length);
+            Assert.HasCount(1, lines);
             Assert.AreEqual("\"", lines[0]["a"]);
             Assert.AreEqual("\"", lines[0]["d"]);
             Assert.IsTrue(lines[0].HasColumn("a"));
@@ -569,7 +569,7 @@ namespace Csv.Tests
         public void TestAliasIgnoreMissingGroup()
         {
             var lines = CsvReader.ReadFromText("a;b;c\n\"\"\"\";a'b;'", new CsvOptions { Aliases = [["d", "e"]] }).ToArray();
-            Assert.AreEqual(1, lines.Length);
+            Assert.HasCount(1, lines);
             Assert.AreEqual("\"", lines[0]["a"]);
             Assert.AreEqual("a'b", lines[0]["b"]);
             Assert.AreEqual("'", lines[0]["c"]);
@@ -590,15 +590,15 @@ namespace Csv.Tests
                 HeaderMode = HeaderMode.HeaderAbsent,
             };
             foreach (var line in CsvReader.ReadFromText("one,\"two - a, two - b, \"\"two - c\"\", two - d\",three", options))
-                Assert.AreEqual(3, line.Values.Length);
+                Assert.HasCount(3, line.Values);
         }
 
         [TestMethod]
         public void ReadFromMemory()
         {
             var lines = CsvReader.ReadFromMemory("A,B\nC,D".AsMemory()).ToArray();
-            Assert.AreEqual(1, lines.Length);
-            Assert.AreEqual(2, lines[0].Headers.Length);
+            Assert.HasCount(1, lines);
+            Assert.HasCount(2, lines[0].Headers);
             Assert.AreEqual(2, lines[0].ColumnCount);
             Assert.AreEqual(2, lines[0].Index);
             Assert.AreEqual("C", lines[0][0].AsString());
@@ -613,15 +613,15 @@ namespace Csv.Tests
             //"A";"B";"C"
             //"A """;"B \"" ";"C"
             var withSpace = CsvReader.ReadFromText("\"A\";\"B\";\"C\"\n\"A \"\"\";\"B \\\"\" \";\"C\"", new CsvOptions { AllowNewLineInEnclosedFieldValues = true }).ToArray();
-            Assert.AreEqual(1, withSpace.Length);
-            Assert.AreEqual(3, withSpace[0].Headers.Length);
+            Assert.HasCount(1, withSpace);
+            Assert.HasCount(3, withSpace[0].Headers);
             Assert.AreEqual("A \"", withSpace[0][0]);
             Assert.AreEqual("B \\\" ", withSpace[0][1]);
             Assert.AreEqual("C", withSpace[0][2]);
 
             withSpace = [.. CsvReader.ReadFromText("\"A\";\"B\";\"C\"\n\"A \"\"\";\"B \\\"\" \";\"C\"")];
-            Assert.AreEqual(1, withSpace.Length);
-            Assert.AreEqual(3, withSpace[0].Headers.Length);
+            Assert.HasCount(1, withSpace);
+            Assert.HasCount(3, withSpace[0].Headers);
             Assert.AreEqual("A \"", withSpace[0][0]);
             Assert.AreEqual("B \\\" ", withSpace[0][1]);
             Assert.AreEqual("C", withSpace[0][2]);
@@ -629,15 +629,15 @@ namespace Csv.Tests
             //"A";"B";"C"
             //"A """;"B \""";"C"
             var withoutSpace = CsvReader.ReadFromText("\"A\";\"B\";\"C\"\n\"A \"\"\";\"B \\\"\"\";\"C\"", new CsvOptions { AllowNewLineInEnclosedFieldValues = true }).ToArray();
-            Assert.AreEqual(1, withoutSpace.Length);
-            Assert.AreEqual(3, withoutSpace[0].Headers.Length);
+            Assert.HasCount(1, withoutSpace);
+            Assert.HasCount(3, withoutSpace[0].Headers);
             Assert.AreEqual("A \"", withoutSpace[0][0]);
             Assert.AreEqual("B \\\"", withoutSpace[0][1]);
             Assert.AreEqual("C", withoutSpace[0][2]);
 
             withoutSpace = [.. CsvReader.ReadFromText("\"A\";\"B\";\"C\"\n\"A \"\"\";\"B \\\"\"\";\"C\"")];
-            Assert.AreEqual(1, withoutSpace.Length);
-            Assert.AreEqual(3, withoutSpace[0].Headers.Length);
+            Assert.HasCount(1, withoutSpace);
+            Assert.HasCount(3, withoutSpace[0].Headers);
             Assert.AreEqual("A \"", withoutSpace[0][0]);
             Assert.AreEqual("B \\\"", withoutSpace[0][1]);
             Assert.AreEqual("C", withoutSpace[0][2]);
@@ -647,7 +647,7 @@ namespace Csv.Tests
         public void UnterminatedQuoteNoNewLine()
         {
             var lines = CsvReader.ReadFromText("a,b\n1,\"2").ToArray();
-            Assert.AreEqual(1, lines.Length);
+            Assert.HasCount(1, lines);
             Assert.AreEqual(2, lines[0].ColumnCount);
             Assert.AreEqual("1", lines[0]["a"]);
             Assert.AreEqual("\"2", lines[0]["b"]);
@@ -659,7 +659,7 @@ namespace Csv.Tests
             var options = new CsvOptions { AllowNewLineInEnclosedFieldValues = true };
             var csv = "a,b\n1,\"2\n3,4";
             var lines = CsvReader.ReadFromText(csv, options).ToArray();
-            Assert.AreEqual(1, lines.Length);
+            Assert.HasCount(1, lines);
             Assert.AreEqual(2, lines[0].ColumnCount);
             Assert.AreEqual("1", lines[0]["a"]);
             Assert.AreEqual($"\"2{options.NewLine}3,4", lines[0]["b"]);
@@ -669,7 +669,7 @@ namespace Csv.Tests
         public void TooManyColumnsWithoutValidation()
         {
             var lines = CsvReader.ReadFromText("a,b\n1,2,3").ToArray();
-            Assert.AreEqual(1, lines.Length);
+            Assert.HasCount(1, lines);
             Assert.AreEqual(3, lines[0].ColumnCount);
             Assert.AreEqual("1", lines[0]["a"]);
             Assert.AreEqual("2", lines[0]["b"]);
@@ -681,7 +681,7 @@ namespace Csv.Tests
         {
             var options = new CsvOptions { ValidateColumnCount = true };
             var lines = CsvReader.ReadFromText("a,b\n1,2,3", options).ToArray();
-            Assert.AreEqual(1, lines.Length);
+            Assert.HasCount(1, lines);
             Assert.ThrowsExactly<InvalidOperationException>(() => _ = lines[0]["a"]);
         }
         public const string smalldatabase = @"A,B,C,D
@@ -711,7 +711,7 @@ namespace Csv.Tests
             var options = new CsvOptions();
             var database = CsvReader.ReadFromText(smalldatabase, options);
             var c2 = database.GetColumn(1).ToArray();
-            Assert.AreEqual(10, c2.Length);
+            Assert.HasCount(10, c2);
         }
         [TestMethod]
         [TestCategory("GetColumn")]
@@ -754,8 +754,8 @@ namespace Csv.Tests
         {
             var database = CsvReader.ReadFromText(smalldatabase);
             var block = database.GetBlock(2, 2).ToArray();
-            Assert.AreEqual(2, block.Length);
-            Assert.AreEqual(4, block[0].Headers.Length);
+            Assert.HasCount(2, block);
+            Assert.HasCount(4, block[0].Headers);
             Assert.AreEqual("3", block[0]["A"]);
             Assert.AreEqual("38.28", block[0]["B"]);
             Assert.AreEqual("give", block[0]["C"]);
@@ -771,8 +771,8 @@ namespace Csv.Tests
         {
             var database = CsvReader.ReadFromText(smalldatabase);
             var block = database.GetBlock(col_start: 2, col_length: 2).ToArray();
-            Assert.AreEqual(10, block.Length);
-            Assert.AreEqual(2, block[0].Headers.Length);
+            Assert.HasCount(10, block);
+            Assert.HasCount(2, block[0].Headers);
             Assert.AreEqual("Never", block[0]["C"]);
             Assert.AreEqual("gonna", block[1]["C"]);
             Assert.AreEqual("give", block[2]["C"]);
@@ -800,8 +800,8 @@ namespace Csv.Tests
         {
             var database = CsvReader.ReadFromText(smalldatabase);
             var block = database.GetBlock(row_start: 4, row_length: 3, col_start: 1, col_length: 2).ToArray();
-            Assert.AreEqual(3, block.Length);
-            Assert.AreEqual(2, block[0].Headers.Length);
+            Assert.HasCount(3, block);
+            Assert.HasCount(2, block[0].Headers);
             Assert.AreEqual("96.73", block[0]["B"]);
             Assert.AreEqual("up", block[0]["C"]);
             Assert.AreEqual("73.12", block[1]["B"]);
@@ -819,7 +819,7 @@ namespace Csv.Tests
             await foreach (var line in CsvReader.ReadFromTextAsync(csv))
                 asyncLines.Add(line);
 
-            Assert.AreEqual(sync.Length, asyncLines.Count);
+            Assert.HasCount(sync.Length, asyncLines);
             for (var i = 0; i < sync.Length; i++)
                 CollectionAssert.AreEqual(sync[i].Values, asyncLines[i].Values);
         }
@@ -833,7 +833,7 @@ namespace Csv.Tests
             await foreach (var line in CsvReader.ReadFromStreamAsync(new MemoryStream(Encoding.UTF8.GetBytes(csv))))
                 asyncLines.Add(line);
 
-            Assert.AreEqual(sync.Length, asyncLines.Count);
+            Assert.HasCount(sync.Length, asyncLines);
             for (var i = 0; i < sync.Length; i++)
                 CollectionAssert.AreEqual(sync[i].Values, asyncLines[i].Values);
         }

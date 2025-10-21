@@ -52,7 +52,7 @@ namespace Csv.Tests
             Console.WriteLine($"Average per operation: {(double)sw.ElapsedMilliseconds / (iterations * testCases.Length):F4}ms");
 
             // Performance should be reasonable
-            Assert.IsTrue(sw.ElapsedMilliseconds < 1000, $"Performance test took too long: {sw.ElapsedMilliseconds}ms");
+            Assert.IsLessThan(1000, sw.ElapsedMilliseconds, $"Performance test took too long: {sw.ElapsedMilliseconds}ms");
         }
 
         [TestMethod]
@@ -81,7 +81,7 @@ namespace Csv.Tests
             Console.WriteLine($"Memory allocated: {allocatedMemory:N0} bytes");
 
             // Should allocate minimal memory (allowing some tolerance for test infrastructure)
-            Assert.IsTrue(allocatedMemory < 50000, $"Too much memory allocated: {allocatedMemory:N0} bytes");
+            Assert.IsLessThan(50000, allocatedMemory, $"Too much memory allocated: {allocatedMemory:N0} bytes");
         }
     }
 }

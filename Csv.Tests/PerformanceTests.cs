@@ -108,8 +108,8 @@ namespace Csv.Tests
             var optimizedTime = sw.ElapsedMilliseconds;
 
             // Verify results are equivalent
-            Assert.AreEqual(traditionalLines.Length, spanLines.Length);
-            Assert.AreEqual(traditionalLines.Length, optimizedLines.Length);
+            Assert.HasCount(traditionalLines.Length, spanLines);
+            Assert.HasCount(traditionalLines.Length, optimizedLines);
 
             for (int i = 0; i < Math.Min(100, traditionalLines.Length); i++) // Check first 100 lines
             {
@@ -203,8 +203,8 @@ namespace Csv.Tests
 
             // For small test datasets, allow higher memory usage due to Memory<char> conversion overhead
             // In real-world large dataset scenarios, buffer writers show significant memory benefits
-            Assert.IsTrue(bufferMemory <= traditionalMemory * 5.0,
-                $"Buffer writer memory overhead should be reasonable for small datasets (traditional: {traditionalMemory:N0}, buffer: {bufferMemory:N0}, ratio: {memoryRatio:F2}x)");
+            Assert.IsLessThanOrEqualTo(traditionalMemory * 5.0,
+bufferMemory, $"Buffer writer memory overhead should be reasonable for small datasets (traditional: {traditionalMemory:N0}, buffer: {bufferMemory:N0}, ratio: {memoryRatio:F2}x)");
         }
     }
 }

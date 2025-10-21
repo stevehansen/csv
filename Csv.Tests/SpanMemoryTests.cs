@@ -19,7 +19,7 @@ namespace Csv.Tests
             var lines = new[]
             {
                 new[] { "John".AsMemory(), "25".AsMemory(), "NYC".AsMemory() },
-                new[] { "Jane".AsMemory(), "30".AsMemory(), "LA".AsMemory() }
+                ["Jane".AsMemory(), "30".AsMemory(), "LA".AsMemory()]
             };
 
             var result = CsvWriter.WriteToText(headers, lines);
@@ -35,7 +35,7 @@ namespace Csv.Tests
             var lines = new[]
             {
                 new[] { "John".AsMemory(), "25".AsMemory(), "NYC".AsMemory() },
-                new[] { "Jane".AsMemory(), "30".AsMemory(), "LA".AsMemory() }
+                ["Jane".AsMemory(), "30".AsMemory(), "LA".AsMemory()]
             };
 
             using var writer = new StringWriter();
@@ -57,7 +57,7 @@ namespace Csv.Tests
             var success = CsvWriter.WriteToBuffer(buffer, headers, lines, ',', out var written);
 
             Assert.IsTrue(success);
-            Assert.IsTrue(written > 0);
+            Assert.IsGreaterThan(0, written);
 
             var result = new string(buffer, 0, written);
             Assert.AreEqual("A,B\n1,2\n", result);
@@ -70,7 +70,7 @@ namespace Csv.Tests
             var lines = new[] { new[] { "VeryLongValue1".AsMemory(), "VeryLongValue2".AsMemory() } };
 
             var buffer = new char[10]; // Too small
-            var success = CsvWriter.WriteToBuffer(buffer, headers, lines, ',', out var written);
+            var success = CsvWriter.WriteToBuffer(buffer, headers, lines, ',', out _);
 
             Assert.IsFalse(success);
         }
@@ -94,7 +94,7 @@ namespace Csv.Tests
 
             var lines = CsvReader.ReadFromTextAsSpan(csv).ToArray();
 
-            Assert.AreEqual(2, lines.Length);
+            Assert.HasCount(2, lines);
             Assert.AreEqual("John", lines[0].GetSpan("Name").ToString());
             Assert.AreEqual("25", lines[0].GetSpan("Age").ToString());
             Assert.AreEqual("Jane", lines[1].GetSpan("Name").ToString());
@@ -108,11 +108,11 @@ namespace Csv.Tests
 
             var lines = CsvReader.ReadFromTextAsSpan(csv).ToArray();
 
-            Assert.AreEqual(2, lines.Length);
+            Assert.HasCount(2, lines);
             Assert.AreEqual("John", lines[0].GetMemory("Name").ToString());
             Assert.AreEqual("25", lines[0].GetMemory("Age").ToString());
-            Assert.AreEqual(2, lines[0].HeadersMemory.Length);
-            Assert.AreEqual(2, lines[0].ValuesMemory.Length);
+            Assert.HasCount(2, lines[0].HeadersMemory);
+            Assert.HasCount(2, lines[0].ValuesMemory);
         }
 
         [TestMethod]
@@ -187,7 +187,7 @@ namespace Csv.Tests
             var rows = new[]
             {
                 new[] { "John".AsMemory(), "25".AsMemory() },
-                new[] { "Jane".AsMemory(), "30".AsMemory() }
+                ["Jane".AsMemory(), "30".AsMemory()]
             };
 
             writer.WriteCsv(headers, rows);
@@ -239,7 +239,7 @@ namespace Csv.Tests
 
             var lines = CsvReader.ReadFromMemoryOptimized(csv, null, memoryOptions).ToArray();
 
-            Assert.AreEqual(2, lines.Length);
+            Assert.HasCount(2, lines);
             Assert.AreEqual("John", lines[0].GetSpan("Name").ToString());
             Assert.AreEqual("25", lines[0].GetSpan("Age").ToString());
             Assert.AreEqual("Jane", lines[1].GetSpan("Name").ToString());
@@ -252,8 +252,8 @@ namespace Csv.Tests
             var headers = new[] { "Col1", "Col2" };
             using var writer = CsvReader.CreateBufferWriter(headers);
 
-            writer.WriteRow(new[] { "A".AsMemory(), "B".AsMemory() });
-            writer.WriteRow(new[] { "C".AsMemory(), "D".AsMemory() });
+            writer.WriteRow(["A".AsMemory(), "B".AsMemory()]);
+            writer.WriteRow(["C".AsMemory(), "D".AsMemory()]);
 
             var result = writer.ToString();
             var expected = $"Col1,Col2{Environment.NewLine}A,B{Environment.NewLine}C,D{Environment.NewLine}";

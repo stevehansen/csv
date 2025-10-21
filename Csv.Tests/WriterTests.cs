@@ -68,7 +68,7 @@ namespace Csv.Tests
 
             // NOTE: Parse again and check headers
             var reader = CsvReader.ReadFromText(result).ToArray();
-            Assert.AreEqual(rows.Length, reader.Length);
+            Assert.HasCount(rows.Length, reader);
             if (reader.Length > 0 && !reader[0].Headers.SequenceEqual(headers))
             {
                 Assert.Fail("reader[0].Headers.SequenceEqual(headers)");
