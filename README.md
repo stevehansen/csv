@@ -15,6 +15,10 @@ To install csv, use the following command in the Package Manager Console
 
     PM> Install-Package Csv
 
+## Changelog
+
+For a detailed list of changes and version history, see [CHANGELOG.md](CHANGELOG.md).
+
 ## Basic Usage
 
 _More examples can be found in the tests._
