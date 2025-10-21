@@ -269,12 +269,12 @@ namespace Csv.Tests
                 InitialBufferSize = -1
             };
 
-            Assert.ThrowsException<ArgumentException>(() => options.Validate());
+            Assert.Throws<ArgumentException>(() => options.Validate());
 
             options.InitialBufferSize = 1024;
             options.MaxBufferSize = 512; // Smaller than initial
 
-            Assert.ThrowsException<ArgumentException>(() => options.Validate());
+            Assert.Throws<ArgumentException>(() => options.Validate());
 
             options.MaxBufferSize = 2048;
             options.Validate(); // Should not throw
