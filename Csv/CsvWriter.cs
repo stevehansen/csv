@@ -220,6 +220,43 @@ namespace Csv
 
 #endif
 
+        /// <summary>
+        /// Writes the lines to the writer.
+        /// </summary>
+        /// <param name="writer">The text writer to write the data to.</param>
+        /// <param name="headers">The headers that should be used for the first line, determines the number of columns. Can be null if skipHeaderRow is true.</param>
+        /// <param name="lines">The lines with data that should be written.</param>
+        /// <param name="separator">The separator to use between columns (comma, semicolon, tab, ...)</param>
+        /// <param name="skipHeaderRow">Indicate whether the header row should be skipped, defaults to <c>false</c>.</param>
+        /// <param name="cancellationToken">The cancellation token to use.</param>
+        public static async Task WriteAsync(TextWriter writer, string[]? headers, IEnumerable<string[]> lines, char separator = ',', bool skipHeaderRow = false,
+            CancellationToken cancellationToken = default)
+        {
+            if (writer == null)
+                throw new ArgumentNullException(nameof(writer));
+            if (headers == null && !skipHeaderRow)
+                throw new ArgumentNullException(nameof(headers));
+            if (lines == null)
+                throw new ArgumentNullException(nameof(lines));
+
+            if (!skipHeaderRow)
+            {
+                await WriteLineAsync(writer, headers!, headers!.Length, separator);
+            }
+
+            using var lineEnumerator = lines.GetEnumerator();
+            if (!lineEnumerator.MoveNext())
+                return;
+            var columnCount = headers?.Length ?? lineEnumerator.Current.Length;
+            await WriteLineAsync(writer, lineEnumerator.Current, columnCount, separator);
+
+            while (lineEnumerator.MoveNext())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await WriteLineAsync(writer, lineEnumerator.Current, columnCount, separator);
+            }
+        }
+
 #if NET8_0_OR_GREATER
 
         /// <summary>
@@ -263,7 +300,7 @@ namespace Csv
 
             if (!skipHeaderRow)
             {
-                WriteLine(writer, headers!, headers!.Length, separator);
+                await WriteLineAsync(writer, headers!, headers!.Length, separator);
             }
 
             var enumerator = lines.GetAsyncEnumerator(cancellationToken);
@@ -272,19 +309,19 @@ namespace Csv
                 if (!await enumerator.MoveNextAsync())
                     return;
                 var columnCount = headers?.Length ?? enumerator.Current.Length;
-                WriteLine(writer, enumerator.Current, columnCount, separator);
+                await WriteLineAsync(writer, enumerator.Current, columnCount, separator);
                 if (cancellationToken.CanBeCanceled)
                 {
                     while (await enumerator.MoveNextAsync())
                     {
-                        WriteLine(writer, enumerator.Current, columnCount, separator);
+                        await WriteLineAsync(writer, enumerator.Current, columnCount, separator);
                         cancellationToken.ThrowIfCancellationRequested();
                     }
                 }
                 else
                 {
                     while (await enumerator.MoveNextAsync())
-                        WriteLine(writer, enumerator.Current, columnCount, separator);
+                        await WriteLineAsync(writer, enumerator.Current, columnCount, separator);
                 }
             }
             finally
@@ -410,7 +447,42 @@ namespace Csv
 
 #endif
 
-        private static void WriteLine(TextWriter writer, string[] data, int columnCount, char separator)
+		private static async Task WriteLineAsync(TextWriter writer, string[] data, int columnCount, char separator)
+		{
+			var escapeChars = new[] { separator, '\'', '\n' };
+			for (var i = 0; i < columnCount; i++)
+			{
+				if (i > 0)
+					await writer.WriteAsync(separator);
+
+				if (i < data.Length)
+				{
+					var escape = false;
+					var cell = data[i] ?? string.Empty;
+#if NET8_0_OR_GREATER
+					if (cell.Contains('"'))
+#else
+                    if (cell.Contains("\""))
+#endif
+					{
+						escape = true;
+						cell = cell.Replace("\"", "\"\"");
+					}
+					else if (cell.IndexOfAny(escapeChars) >= 0)
+						escape = true;
+
+					if (escape)
+						await writer.WriteAsync('"');
+					await writer.WriteAsync(cell);
+					if (escape)
+						await writer.WriteAsync('"');
+				}
+			}
+
+			await writer.WriteLineAsync();
+		}
+
+		private static void WriteLine(TextWriter writer, string[] data, int columnCount, char separator)
         {
             var escapeChars = new[] { separator, '\'', '\n' };
             for (var i = 0; i < columnCount; i++)
@@ -465,7 +537,7 @@ namespace Csv
             writer.WriteLine();
         }
 
-        private static void WriteLineMemorySpan(TextWriter writer, ReadOnlySpan<ReadOnlyMemory<char>> data, int columnCount, char separator)
+		private static void WriteLineMemorySpan(TextWriter writer, ReadOnlySpan<ReadOnlyMemory<char>> data, int columnCount, char separator)
         {
             var escapeChars = new[] { separator, '\'', '\n' };
             for (var i = 0; i < columnCount; i++)
@@ -482,44 +554,43 @@ namespace Csv
 
             writer.WriteLine();
         }
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private static void WriteCellMemory(TextWriter writer, ReadOnlySpan<char> cell, char separator, char[] escapeChars)
+		{
+			var escape = false;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void WriteCellMemory(TextWriter writer, ReadOnlySpan<char> cell, char separator, char[] escapeChars)
-        {
-            var escape = false;
-            
-            // Check if we need to escape
-            if (cell.Contains('"'))
-            {
-                escape = true;
-                // Need to escape quotes by doubling them
-                if (escape)
-                    writer.Write('"');
-                
-                for (int i = 0; i < cell.Length; i++)
-                {
-                    var ch = cell[i];
-                    if (ch == '"')
-                        writer.Write("\"\"");
-                    else
-                        writer.Write(ch);
-                }
-                
-                if (escape)
-                    writer.Write('"');
-            }
-            else if (cell.IndexOfAny(escapeChars) >= 0)
-            {
-                escape = true;
-                writer.Write('"');
-                writer.Write(cell);
-                writer.Write('"');
-            }
-            else
-            {
-                writer.Write(cell);
-            }
-        }
+			// Check if we need to escape
+			if (cell.Contains('"'))
+			{
+				escape = true;
+				// Need to escape quotes by doubling them
+				if (escape)
+					writer.Write('"');
+
+				for (int i = 0; i < cell.Length; i++)
+				{
+					var ch = cell[i];
+					if (ch == '"')
+						writer.Write("\"\"");
+					else
+						writer.Write(ch);
+				}
+
+				if (escape)
+					writer.Write('"');
+			}
+			else if (cell.IndexOfAny(escapeChars) >= 0)
+			{
+				escape = true;
+				writer.Write('"');
+				writer.Write(cell);
+				writer.Write('"');
+			}
+			else
+			{
+				writer.Write(cell);
+			}
+		}
 
         private static bool WriteLineToBuffer(Span<char> buffer, ReadOnlySpan<ReadOnlyMemory<char>> data, char separator, out int written)
         {
