@@ -8,22 +8,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.0.205] - 2025-10-21
 
 ### Added
-- AutoRenameHeaders option to handle duplicate and empty headers (#95)
-  - Automatically renames duplicate headers (e.g., "A" becomes "A", "A2", "A3")
-  - Converts empty headers to "Empty", "Empty2", etc.
-  - Defaults to true; set to false to throw on duplicates (previous behavior)
+- Support for nullable headers and convenience overloads (#66)
+- Span/Memory APIs for .NET 8.0+ for high-performance scenarios
+- .NET 9 support in tests (#92)
+- .NET 9 setup for CodeQL workflow (#91)
+
+### Fixed
+- Correct header count for HeaderAbsent mode with multiline fields (#72)
+- Compile error in Assert.Throws
+- Relaxed performance test thresholds for CI environments
 
 ### Changed
-- Relaxed performance test thresholds for CI environments
+- Moved PRD to docs folder and updated documentation guidelines
+- Enhanced documentation with architecture details and NuGet badges
+- Updated dependencies:
+  - mstest monorepo to v4
+  - microsoft.net.test.sdk to v18
+  - github/codeql-action to v4
+  - actions/stale to v10
+  - actions/setup-dotnet to v5
+  - actions/checkout to v5
+  - microsoft.net.test.sdk to 17.14.1
+  - mstest monorepo to 3.9.3
+
+### Performance
+- Eliminated regex usage in CSV parsing for better performance
 
 ## [2.0.170] - 2025-05-20
 
 ### Added
-- .NET 9 support in tests and CodeQL workflow (#91, #92)
 - AllowEnclosedFieldValues option (#51, #84)
 - LineHasColumn method to check if a column exists (#32, #90)
 - WriteAsync overload with CancellationToken support (#76)
-- Helper extension methods: GetColumn and GetBlock
 - Comprehensive test coverage for:
   - Comma inside quoted text (#73, #86)
   - Invalid CSV scenarios (#87)
@@ -33,15 +49,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Writer null cell handling (#74, #83)
 - Environment.NewLine usage in writer tests (#89)
-- Header count for HeaderAbsent mode with multiline fields (#72)
 
 ### Changed
 - Removed regex splitting in favor of more efficient parsing (#82)
 - Expanded README with async and helper APIs documentation (#85)
 - Updated target frameworks and NuGet properties
-
-### Performance
-- Eliminated regex usage in CSV parsing for better performance
+- Updated tests to .NET 9
+- Updated dependencies:
+  - mstest monorepo to 3.9.0
+  - microsoft.net.test.sdk to 17.14.0
+  - github/codeql-action to v3
+  - mstest monorepo to 3.8.3
 
 ## [2.0.128] - 2025-02-20
 
@@ -55,18 +73,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Deprecated .NET Standard 1.0 target (no longer recommended)
 - Fixed NuSpec paths
 - Code cleanup: warnings and whitespace
+- ReSharper code style improvements
 - Updated dependencies:
   - actions/checkout to v4
   - actions/stale to v9
-  - github/codeql-action to v3
-
-### Performance
-- Added Span/Memory optimizations for .NET 8.0+
+  - microsoft.net.test.sdk to v17.6.0 (#61)
+  - microsoft.net.test.sdk to v17.5.0 (#58)
+  - actions/stale to v7 (#59)
 
 ## [2.0.93] - 2022-12-10
 
 ### Changed
-- Updated Microsoft.NET.Test.Sdk to v17.4.0 (#55)
+- Updated microsoft.net.test.sdk to v17.4.0 (#55)
+- Updated microsoft.net.test.sdk to v17.3.2 (#53)
+- Updated actions/stale to v6 (#54)
 
 ## [2.0.87] - 2022-09-02
 
@@ -77,6 +97,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Various fixes for async write operations (#52)
 
+### Changed
+- Updated mstest monorepo to v2.2.10 (#40)
+
 ## [2.0.84] - 2022-05-04
 
 ### Added
@@ -85,23 +108,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - GetBlock(int row_start, int row_length, int col_start, int col_length)
 
 ### Changed
-- Updated mstest monorepo to v2.2.10 (#40)
 - Updated github/codeql-action to v2 (#45)
 
 ## [2.0.80] - 2022-04-21
 
 ### Changed
-- Updated Microsoft.NET.Test.Sdk to v17 (#43)
+- Updated microsoft.net.test.sdk to v17 (#43)
 - Updated multiple dependencies:
-  - Microsoft.SourceLink.GitHub to v1.1.1 (#38)
+  - microsoft.net.test.sdk to v15.9.2 (#37)
+  - microsoft.sourcelink.github to v1.1.1 (#38)
   - actions/checkout to v3 (#41)
   - actions/stale to v5 (#42)
-  - mstest monorepo to v2 (#44)
 
 ## [2.0.76] - 2022-04-21
 
 ### Changed
-- Minor updates and dependency maintenance
+- Updated mstest monorepo to v2 (#44)
 
 ## [2.0.67] - 2022-03-31
 
@@ -118,14 +140,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Option to skip header when writing CSV files
 
-### Performance
-- Improved performance for .Replace call
-
 ## [2.0.62] - 2020-12-24
 
 ### Changed
 - Moved custom logic from SplitLine to CsvLineSplitter
-- Code organization improvements
+
+### Performance
+- Improved performance for .Replace call
 
 ## [2.0.61] - 2020-12-23
 
@@ -133,10 +154,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Span/Memory support for .NET Core 3.1 and .NET Standard 2.1
 - .NET Core 3.1 support
 - .NET Standard 2.1 target (enables use in Blazor WASM projects) (#29)
+- CodeQL analysis workflow
+
+### Fixed
+- Fixed issue #28
 
 ### Performance
 - Prefer Span/Memory APIs for better performance on supported frameworks
-- Improved performance for string operations
 
 ## Earlier Versions
 
