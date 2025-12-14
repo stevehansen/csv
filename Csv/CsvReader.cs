@@ -736,9 +736,9 @@ namespace Csv
             options.Splitter = CsvLineSplitter.Get(options);
         }
 
-        private static IList<MemoryText> SplitLine(MemoryText line, CsvOptions options)
+        private static IList<MemoryText> SplitLine(MemoryText line, CsvOptions options, int? capacity = null)
         {
-            return options.Splitter.Split(line, options);
+            return options.Splitter.Split(line, options, capacity);
         }
 
         private static MemoryText[] Trim(IList<MemoryText> line, CsvOptions options)
@@ -883,9 +883,9 @@ namespace Csv
                 get
                 {
 #if NET8_0_OR_GREATER
-                    rawSplitLine ??= SplitLine(Raw.AsMemory(), options);
+                    rawSplitLine ??= SplitLine(Raw.AsMemory(), options, headers?.Length);
 #else
-                    rawSplitLine ??= SplitLine(Raw, options);
+                    rawSplitLine ??= SplitLine(Raw, options, headers?.Length);
 #endif
                     return rawSplitLine;
                 }
@@ -982,7 +982,7 @@ namespace Csv
                 return RawSplitLine.Count > index;
             }
 
-            internal IList<MemoryText> RawSplitLine => rawSplitLine ??= SplitLine(Raw.AsMemory(), options);
+            internal IList<MemoryText> RawSplitLine => rawSplitLine ??= SplitLine(Raw.AsMemory(), options, headers?.Length);
 
             public string[] Values => Line.Select(it => it.AsString()).ToArray();
             public ReadOnlyMemory<char>[] ValuesMemory => Line;
@@ -1126,7 +1126,7 @@ namespace Csv
                 return RawSplitLine.Count > index;
             }
 
-            internal IList<ReadOnlyMemory<char>> RawSplitLine => rawSplitLine ??= SplitLineOptimized(rawMemory, options, memoryOptions);
+            internal IList<ReadOnlyMemory<char>> RawSplitLine => rawSplitLine ??= SplitLineOptimized(rawMemory, options, memoryOptions, headers?.Length);
 
             public string[] Values => Line.Select(v => v.ToString()).ToArray();
             public ReadOnlyMemory<char>[] ValuesMemory => Line;
@@ -1229,10 +1229,10 @@ namespace Csv
             public override string ToString() => Raw;
         }
 
-        private static IList<ReadOnlyMemory<char>> SplitLineOptimized(ReadOnlyMemory<char> line, CsvOptions options, CsvMemoryOptions memoryOptions)
+        private static IList<ReadOnlyMemory<char>> SplitLineOptimized(ReadOnlyMemory<char> line, CsvOptions options, CsvMemoryOptions memoryOptions, int? capacity = null)
         {
             var splitter = CsvLineSplitter.Get(options);
-            return splitter.Split(line, options);
+            return splitter.Split(line, options, capacity);
         }
 
         private static ReadOnlyMemory<char>[] TrimOptimized(IList<ReadOnlyMemory<char>> line, CsvOptions options, CsvMemoryOptions memoryOptions)
