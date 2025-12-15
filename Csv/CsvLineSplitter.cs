@@ -144,7 +144,7 @@ namespace Csv
             return trailingQuoteCount % 2 != 0;
         }
 
-        public IList<MemoryText> Split(MemoryText line, CsvOptions options)
+        public IList<MemoryText> Split(MemoryText line, CsvOptions options, int capacity = -1)
         {
 #if NET8_0_OR_GREATER
             var span = line.Span;
@@ -152,7 +152,7 @@ namespace Csv
             var span = line;
 #endif
 
-            var values = new List<MemoryText>();
+            var values = capacity > 0 ? new List<MemoryText>(capacity) : new List<MemoryText>();
             var start = 0;
             var inQuotes = false;
             char quoteChar = '\0';
