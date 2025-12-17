@@ -199,3 +199,5 @@ FakesAssemblies/
 project.lock.json
 
 .claude/settings.local.json
+dotnet/
+dotnet-install.sh
