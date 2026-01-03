@@ -31,17 +31,17 @@ namespace Csv.Tests
         {
             var options = new CsvOptions();
 
-            // Two quotes - terminated
-            Assert.IsFalse(CsvLineSplitter.IsUnterminatedQuotedValue("\"hello\"\"", options));
+            // Two trailing quotes - unterminated ("" is escaped quote, no closing quote)
+            Assert.IsTrue(CsvLineSplitter.IsUnterminatedQuotedValue("\"hello\"\"", options));
 
-            // Three quotes - unterminated
-            Assert.IsTrue(CsvLineSplitter.IsUnterminatedQuotedValue("\"hello\"\"\"", options));
+            // Three trailing quotes - terminated ("" escaped + " closer, value ends with ")
+            Assert.IsFalse(CsvLineSplitter.IsUnterminatedQuotedValue("\"hello\"\"\"", options));
 
-            // Four quotes - terminated
-            Assert.IsFalse(CsvLineSplitter.IsUnterminatedQuotedValue("\"hello\"\"\"\"", options));
+            // Four trailing quotes - unterminated ("" + "" = two escaped, no closer)
+            Assert.IsTrue(CsvLineSplitter.IsUnterminatedQuotedValue("\"hello\"\"\"\"", options));
 
-            // Five quotes - unterminated
-            Assert.IsTrue(CsvLineSplitter.IsUnterminatedQuotedValue("\"hello\"\"\"\"\"", options));
+            // Five trailing quotes - terminated ("" + "" + " = two escaped + closer)
+            Assert.IsFalse(CsvLineSplitter.IsUnterminatedQuotedValue("\"hello\"\"\"\"\"", options));
         }
 
         [TestMethod]
@@ -73,9 +73,11 @@ namespace Csv.Tests
             // Basic terminated single quote
             Assert.IsFalse(CsvLineSplitter.IsUnterminatedQuotedValue("'hello'", options));
 
-            // Multiple single quotes
-            Assert.IsTrue(CsvLineSplitter.IsUnterminatedQuotedValue("'hello'''", options));
-            Assert.IsFalse(CsvLineSplitter.IsUnterminatedQuotedValue("'hello''''", options));
+            // Multiple single quotes - same logic as double quotes
+            // Three trailing = terminated ('' escaped + ' closer)
+            Assert.IsFalse(CsvLineSplitter.IsUnterminatedQuotedValue("'hello'''", options));
+            // Four trailing = unterminated ('' + '' = two escaped, no closer)
+            Assert.IsTrue(CsvLineSplitter.IsUnterminatedQuotedValue("'hello''''", options));
         }
 
         [TestMethod]

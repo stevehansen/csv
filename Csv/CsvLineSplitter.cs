@@ -113,35 +113,29 @@ namespace Csv
                 }
             }
             
-            // In CSV, quotes are escaped by doubling them.
+            // In CSV, quotes are escaped by doubling them ("" becomes ").
             // When checking if a quoted value is unterminated (continues on next line),
             // we need to determine if the trailing quotes indicate an incomplete field.
             //
-            // There's an ambiguity when we have an even number of trailing quotes:
-            // - "field"" could be a complete field containing 'field"'
-            // - OR it could be the start of a multiline field like "field""\nsomething"
+            // According to RFC 4180:
+            // - "" inside a quoted field = escaped quote (one " character in value)
+            // - A single " after content = closing quote
             //
-            // When AllowNewLineInEnclosedFieldValues is enabled, we need to be more
-            // conservative and assume fields with even trailing quotes might continue.
+            // Therefore, for trailing quotes:
+            // - 1 trailing quote = terminated (the closing quote)
+            // - 2 trailing quotes = unterminated ("" is escaped quote, no closer)
+            // - 3 trailing quotes = terminated ("" escaped + " closer, value ends with ")
+            // - 4 trailing quotes = unterminated ("" + "" = two escaped, no closer)
+            // - etc.
             //
-            // Standard behavior (when multiline is disabled):
-            // - 1 trailing quote = terminated (closing quote)
-            // - Even trailing quotes (2,4,6...) = terminated
-            // - Odd trailing quotes (3,5,7...) = unterminated
-            //
-            // Multiline behavior (when multiline is enabled):
-            // - 1 trailing quote = terminated (closing quote)
-            // - 2 trailing quotes = unterminated (might continue on next line)
-            // - 3+ trailing quotes: follow standard pattern
-            
+            // Pattern: odd = terminated, even = unterminated
+
             if (trailingQuoteCount == 1)
                 return false; // always terminated - this is the closing quote
-                
-            if (allowNewLineInEnclosedFieldValues && trailingQuoteCount == 2)
-                return true; // unterminated - might continue on next line
-                
-            // For other cases: even = terminated, odd = unterminated
-            return trailingQuoteCount % 2 != 0;
+
+            // Even number of trailing quotes means all are escaped pairs with no closer
+            // Odd number means escape pairs + one closing quote
+            return trailingQuoteCount % 2 == 0;
         }
 
         public IList<MemoryText> Split(MemoryText line, CsvOptions options, int? initialCapacity = null)
