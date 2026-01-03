@@ -1,8 +1,10 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
 
 namespace Csv.Tests
 {
@@ -171,6 +173,118 @@ namespace Csv.Tests
             Assert.AreEqual(string.Empty, result);
         }
 
+        [TestMethod]
+        public async Task WriteAsync_IEnumerable_WithHeaders()
+        {
+            // Test WriteAsync with IEnumerable<string[]> and headers
+            var headers = new[] { "A", "B", "C" };
+            var lines = new[] { new[] { "X", "Y", "Z" }, new[] { "1", "2", "3" } };
+            var writer = new StringWriter();
+            await CsvWriter.WriteAsync(writer, headers, lines);
+            var result = writer.ToString();
+
+            Assert.AreEqual($"A,B,C{Environment.NewLine}X,Y,Z{Environment.NewLine}1,2,3{Environment.NewLine}", result);
+        }
+
+        [TestMethod]
+        public async Task WriteAsync_IEnumerable_SkipHeaderRow()
+        {
+            // Test WriteAsync with IEnumerable<string[]> and skipHeaderRow
+            var lines = new[] { new[] { "X", "Y", "Z" }, new[] { "1", "2", "3" } };
+            var writer = new StringWriter();
+            await CsvWriter.WriteAsync(writer, null, lines, ',', skipHeaderRow: true);
+            var result = writer.ToString();
+
+            Assert.AreEqual($"X,Y,Z{Environment.NewLine}1,2,3{Environment.NewLine}", result);
+        }
+
+        [TestMethod]
+        public async Task WriteAsync_IEnumerable_ConvenienceOverload()
+        {
+            // Test WriteAsync convenience overload (no headers)
+            var lines = new[] { new[] { "X", "Y", "Z" }, new[] { "1", "2", "3" } };
+            var writer = new StringWriter();
+            await CsvWriter.WriteAsync(writer, lines);
+            var result = writer.ToString();
+
+            Assert.AreEqual($"X,Y,Z{Environment.NewLine}1,2,3{Environment.NewLine}", result);
+        }
+
+        [TestMethod]
+        public async Task WriteAsync_IEnumerable_WithCustomSeparator()
+        {
+            // Test WriteAsync with custom separator
+            var headers = new[] { "A", "B" };
+            var lines = new[] { new[] { "X", "Y" } };
+            var writer = new StringWriter();
+            await CsvWriter.WriteAsync(writer, headers, lines, ';');
+            var result = writer.ToString();
+
+            Assert.AreEqual($"A;B{Environment.NewLine}X;Y{Environment.NewLine}", result);
+        }
+
+        [TestMethod]
+        public async Task WriteAsync_IEnumerable_EscapedValues()
+        {
+            // Test WriteAsync with values requiring escaping
+            var headers = new[] { "A", "B" };
+            var lines = new[] { new[] { "X,Y", "\"Z\"" } };
+            var writer = new StringWriter();
+            await CsvWriter.WriteAsync(writer, headers, lines);
+            var result = writer.ToString();
+
+            Assert.AreEqual($"A,B{Environment.NewLine}\"X,Y\",\"\"\"Z\"\"\"{Environment.NewLine}", result);
+        }
+
+        [TestMethod]
+        public async Task WriteAsync_IEnumerable_EmptyLines()
+        {
+            // Test WriteAsync with empty data
+            var headers = new[] { "A", "B" };
+            var writer = new StringWriter();
+            await CsvWriter.WriteAsync(writer, headers, Array.Empty<string[]>());
+            var result = writer.ToString();
+
+            Assert.AreEqual($"A,B{Environment.NewLine}", result);
+        }
+
+        [TestMethod]
+        public async Task WriteAsync_IEnumerable_CancellationToken()
+        {
+            // Test that cancellation token is respected
+            var lines = new[] { new[] { "X", "Y" }, new[] { "1", "2" }, new[] { "A", "B" } };
+            var writer = new StringWriter();
+            var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+                await CsvWriter.WriteAsync(writer, null, lines, ',', skipHeaderRow: true, cts.Token));
+        }
+
+        [TestMethod]
+        public void WriteAsync_IEnumerable_ThrowsWhenHeadersNull()
+        {
+            // Test that ArgumentNullException is thrown when headers are null and skipHeaderRow is false
+            var lines = new[] { new[] { "X", "Y" } };
+            var writer = new StringWriter();
+
+            Assert.ThrowsAsync<ArgumentNullException>(async () =>
+                await CsvWriter.WriteAsync(writer, null, lines));
+        }
+
+        [TestMethod]
+        public async Task WriteAsync_IEnumerable_NullCellValues()
+        {
+            // Test WriteAsync with null cell values
+            var headers = new[] { "A", "B" };
+            var lines = new[] { new[] { "X", null! }, new[] { null!, "Y" } };
+            var writer = new StringWriter();
+            await CsvWriter.WriteAsync(writer, headers, lines);
+            var result = writer.ToString();
+
+            Assert.AreEqual($"A,B{Environment.NewLine}X,{Environment.NewLine},Y{Environment.NewLine}", result);
+        }
+
 #if NET8_0_OR_GREATER
         [TestMethod]
         public void SkipHeaderRow_WithNullHeaders_ReadOnlyMemory()
@@ -227,7 +341,7 @@ namespace Csv.Tests
         }
 
         [TestMethod]
-        public async System.Threading.Tasks.Task WriteAsync_SkipHeaderRow_WithNullHeaders()
+        public async Task WriteAsync_SkipHeaderRow_WithNullHeaders()
         {
             // Test async version with null headers
             var lines = AsyncEnumerable(new[] { new[] { "X", "Y", "Z" }, new[] { "1", "2", "3" } });
@@ -239,7 +353,7 @@ namespace Csv.Tests
         }
 
         [TestMethod]
-        public async System.Threading.Tasks.Task WriteAsync_SkipHeaderRow_WithNullHeaders_ReadOnlyMemory()
+        public async Task WriteAsync_SkipHeaderRow_WithNullHeaders_ReadOnlyMemory()
         {
             // Test async ReadOnlyMemory version with null headers
             var lines = AsyncEnumerable(new[]
@@ -285,7 +399,7 @@ namespace Csv.Tests
         }
 
         [TestMethod]
-        public async System.Threading.Tasks.Task ConvenienceOverload_WriteAsync()
+        public async Task ConvenienceOverload_WriteAsync()
         {
             // Test async convenience overload
             var lines = AsyncEnumerable(new[] { new[] { "X", "Y", "Z" }, new[] { "1", "2", "3" } });
@@ -297,7 +411,7 @@ namespace Csv.Tests
         }
 
         [TestMethod]
-        public async System.Threading.Tasks.Task ConvenienceOverload_WriteToTextAsync()
+        public async Task ConvenienceOverload_WriteToTextAsync()
         {
             // Test async convenience overload
             var lines = AsyncEnumerable(new[] { new[] { "X", "Y", "Z" }, new[] { "1", "2", "3" } });
@@ -307,7 +421,7 @@ namespace Csv.Tests
         }
 
         [TestMethod]
-        public async System.Threading.Tasks.Task ConvenienceOverload_WriteAsync_ReadOnlyMemory()
+        public async Task ConvenienceOverload_WriteAsync_ReadOnlyMemory()
         {
             // Test async ReadOnlyMemory convenience overload
             var lines = AsyncEnumerable(new[]
@@ -323,7 +437,7 @@ namespace Csv.Tests
         }
 
         [TestMethod]
-        public async System.Threading.Tasks.Task ConvenienceOverload_WriteToTextAsync_ReadOnlyMemory()
+        public async Task ConvenienceOverload_WriteToTextAsync_ReadOnlyMemory()
         {
             // Test async ReadOnlyMemory convenience overload
             var lines = AsyncEnumerable(new[]
@@ -340,7 +454,7 @@ namespace Csv.Tests
         {
             foreach (var item in items)
             {
-                await System.Threading.Tasks.Task.Yield();
+                await Task.Yield();
                 yield return item;
             }
         }
