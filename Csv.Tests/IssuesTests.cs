@@ -144,7 +144,7 @@ D;1;2;3;;
                 var lines = CsvReader.ReadFromText(csv, options).ToList();
             });
 
-            Assert.IsTrue(ex.Message.Contains("Duplicate headers detected"),
+            Assert.Contains("Duplicate headers detected", ex.Message,
                 "Expected duplicate headers error message");
         }
     }

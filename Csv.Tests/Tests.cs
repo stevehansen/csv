@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -736,7 +737,7 @@ namespace Csv.Tests
         public void GetColumnGenericTest_2()
         {
             var database = CsvReader.ReadFromText(smalldatabase);
-            var c2 = database.GetColumn(1, x => double.Parse(x)).ToArray();
+            var c2 = database.GetColumn(1, x => double.Parse(x, CultureInfo.InvariantCulture)).ToArray();
             var sum = c2.Aggregate(0.0, (x, y) => x + y);
             Assert.AreEqual(494.81, sum);
         }
@@ -934,7 +935,7 @@ namespace Csv.Tests
                 }).ToArray();
             });
 
-            Assert.IsTrue(ex.Message.Contains("Duplicate headers detected"));
+            Assert.Contains("Duplicate headers detected", ex.Message);
         }
 
         [TestMethod]
@@ -954,7 +955,7 @@ namespace Csv.Tests
                 }).ToArray();
             });
 
-            Assert.IsTrue(ex.Message.Contains("Duplicate headers detected"));
+            Assert.Contains("Duplicate headers detected", ex.Message);
         }
 
         [TestMethod]

@@ -201,7 +201,7 @@ namespace Csv
                         continue;
                 }
 
-                var record = new ReadLineSpan(headers, headerLookup, index, line, options);
+                var record = new ReadLineSpan(headers!, headerLookup, index, line, options);
                 // Only process multiline if we haven't already done it for header creation
                 var isFirstDataLineInHeaderAbsentMode = (headers != null && options.HeaderMode == HeaderMode.HeaderAbsent && 
                                                          record.Index == (options.RowsToSkip + 1));
@@ -214,7 +214,7 @@ namespace Csv
                             break;
 
                         line = StringHelpers.Concat(line.AsMemory(), options.NewLine, nextLine.AsMemory()).AsString();
-                        record = new ReadLineSpan(headers, headerLookup, index, line, options);
+                        record = new ReadLineSpan(headers!, headerLookup, index, line, options);
                     }
                 }
 
@@ -480,7 +480,7 @@ namespace Csv
                         continue;
                 }
 
-                var record = new ReadLine(headers, headerLookup, index, line, options);
+                var record = new ReadLine(headers!, headerLookup, index, line, options);
                 // Only process multiline if we haven't already done it for header creation
                 var isFirstDataLineInHeaderAbsentMode = (headers != null && options.HeaderMode == HeaderMode.HeaderAbsent && 
                                                          record.Index == (options.RowsToSkip + 1));
@@ -495,7 +495,7 @@ namespace Csv
                             break;
 
                         line += options.NewLine + nextLine;
-                        record = new ReadLine(headers, headerLookup, index, line, options);
+                        record = new ReadLine(headers!, headerLookup, index, line, options);
                     }
                 }
 
@@ -620,7 +620,7 @@ namespace Csv
                         continue;
                 }
 
-                var record = new ReadLine(headers, headerLookup, index, line, options);
+                var record = new ReadLine(headers!, headerLookup, index, line, options);
                 if (options.AllowNewLineInEnclosedFieldValues)
                 {
                     while (record.RawSplitLine.Any(f => CsvLineSplitter.IsUnterminatedQuotedValue(f.AsSpan(), options)))
@@ -630,7 +630,7 @@ namespace Csv
                             break;
 
                         line += options.NewLine + nextLine;
-                        record = new ReadLine(headers, headerLookup, index, line, options);
+                        record = new ReadLine(headers!, headerLookup, index, line, options);
                     }
                 }
 
