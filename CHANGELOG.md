@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.217] - 2026-01-04
+
+### Added
+- AutoRenameHeaders option to handle duplicate and empty headers (#95)
+- WriteAsync support for IEnumerable<string[]> (#104)
+
+### Fixed
+- Correct escaped quote detection logic in IsUnterminatedQuotedValue (#110)
+  - The modulo check for determining if a quoted field is unterminated was inverted
+  - Fields ending with escaped quotes (e.g., `"test"""` for value `test"`) were incorrectly detected as unterminated
+  - This caused rows to merge together when `AllowNewLineInEnclosedFieldValues` was enabled
+- Resolve build warnings and test failures
+
+### Performance
+- Pre-allocate list capacity in SplitLine (#113)
+
+### Changed
+- Updated dependencies:
+  - actions/checkout to v6 (#108)
+  - microsoft.net.test.sdk to 18.0.1
+  - mstest monorepo to 4.0.2
+
 ## [2.0.205] - 2025-10-21
 
 ### Added
@@ -211,6 +233,7 @@ The library was initially released with comprehensive CSV reading and writing fu
 
 For more details on each release, see the [commit history](https://github.com/stevehansen/csv/commits/master) or visit the [NuGet package page](https://www.nuget.org/packages/Csv/).
 
+[2.0.217]: https://www.nuget.org/packages/Csv/2.0.217
 [2.0.205]: https://www.nuget.org/packages/Csv/2.0.205
 [2.0.170]: https://www.nuget.org/packages/Csv/2.0.170
 [2.0.128]: https://www.nuget.org/packages/Csv/2.0.128
