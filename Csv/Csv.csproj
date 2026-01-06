@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <Description>Really simple csv library</Description>
-    <Copyright>Copyright © Steve Hansen 2015-2025</Copyright>
+    <Copyright>Copyright © Steve Hansen 2015-2026</Copyright>
     <AssemblyTitle>Csv</AssemblyTitle>
     <Authors>Steve Hansen</Authors>
     <TargetFrameworks>netstandard2.0;net8.0;net9.0</TargetFrameworks>
