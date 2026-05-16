@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 
 #if NET8_0_OR_GREATER
 using System.Buffers;
@@ -297,7 +296,7 @@ namespace Csv
                     {
                         var splitLine = options.Splitter.Split(line, options);
 
-                        while (splitLine.Any(f => CsvLineSplitter.IsUnterminatedQuotedValue(f.AsSpan(), options)))
+                        while (splitLine.Count > 0 && CsvLineSplitter.IsUnterminatedQuotedValue(splitLine[splitLine.Count - 1].AsSpan(), options))
                         {
                             if (!source.TryReadLine(out var nextLine, out _))
                                 break;
@@ -351,7 +350,7 @@ namespace Csv
                 if (options.AllowNewLineInEnclosedFieldValues && !isFirstDataLineInHeaderAbsentMode)
                 {
                     var rawSplit = options.Splitter.Split(line, options);
-                    while (rawSplit.Any(f => CsvLineSplitter.IsUnterminatedQuotedValue(f.AsSpan(), options)))
+                    while (rawSplit.Count > 0 && CsvLineSplitter.IsUnterminatedQuotedValue(rawSplit[rawSplit.Count - 1].AsSpan(), options))
                     {
                         if (!source.TryReadLine(out var nextLine, out _))
                             break;
@@ -400,7 +399,7 @@ namespace Csv
                     {
                         var splitLine = options.Splitter.Split(line, options);
 
-                        while (splitLine.Any(f => CsvLineSplitter.IsUnterminatedQuotedValue(f.AsSpan(), options)))
+                        while (splitLine.Count > 0 && CsvLineSplitter.IsUnterminatedQuotedValue(splitLine[splitLine.Count - 1].AsSpan(), options))
                         {
                             var (nextOk, nextLine, _) = await source.TryReadLineAsync(ct).ConfigureAwait(false);
                             if (!nextOk)
@@ -455,7 +454,7 @@ namespace Csv
                 if (options.AllowNewLineInEnclosedFieldValues && !isFirstDataLineInHeaderAbsentMode)
                 {
                     var rawSplit = options.Splitter.Split(line, options);
-                    while (rawSplit.Any(f => CsvLineSplitter.IsUnterminatedQuotedValue(f.AsSpan(), options)))
+                    while (rawSplit.Count > 0 && CsvLineSplitter.IsUnterminatedQuotedValue(rawSplit[rawSplit.Count - 1].AsSpan(), options))
                     {
                         var (nextOk, nextLine, _) = await source.TryReadLineAsync(ct).ConfigureAwait(false);
                         if (!nextOk)
