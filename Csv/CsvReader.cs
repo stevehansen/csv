@@ -158,7 +158,7 @@ namespace Csv
         }
 
         private static IEnumerable<ICsvLineSpan> ReadFromMemoryOptimizedImpl(ReadOnlyMemory<char> csv, CsvOptions options, CsvMemoryOptions memoryOptions)
-            => Enumerate<MemorySliceLineSource, OptimizedRowFactory, ReadLineSpanOptimized>(new MemorySliceLineSource(csv, memoryOptions), new OptimizedRowFactory(memoryOptions), options);
+            => Enumerate<MemorySliceLineSource, OptimizedRowFactory, ReadLineSpanOptimized>(new MemorySliceLineSource(csv), new OptimizedRowFactory(memoryOptions), options);
 
 #endif
 
