@@ -107,13 +107,11 @@ namespace Csv
         internal struct MemorySliceLineSource : ILineSource
         {
             private readonly ReadOnlyMemory<char> csv;
-            private readonly CsvMemoryOptions memoryOptions;
             private int position;
 
-            public MemorySliceLineSource(ReadOnlyMemory<char> csv, CsvMemoryOptions memoryOptions)
+            public MemorySliceLineSource(ReadOnlyMemory<char> csv)
             {
                 this.csv = csv;
-                this.memoryOptions = memoryOptions;
                 this.position = 0;
             }
 
@@ -150,27 +148,8 @@ namespace Csv
 
             public MemoryText Concat(MemoryText head, string newLine, MemoryText tail, out string? combined)
             {
-                combined = null;
-
-                var separator = newLine.AsMemory();
-                var totalLength = head.Length + separator.Length + tail.Length;
-                var buffer = memoryOptions.CharArrayPool.Rent(totalLength);
-
-                try
-                {
-                    var span = buffer.AsSpan();
-                    head.Span.CopyTo(span);
-                    separator.Span.CopyTo(span.Slice(head.Length));
-                    tail.Span.CopyTo(span.Slice(head.Length + separator.Length));
-
-                    var result = new char[totalLength];
-                    span.Slice(0, totalLength).CopyTo(result);
-                    return result.AsMemory();
-                }
-                finally
-                {
-                    memoryOptions.CharArrayPool.Return(buffer);
-                }
+                combined = string.Concat(head.Span, newLine.AsSpan(), tail.Span);
+                return combined.AsMemory();
             }
         }
 
