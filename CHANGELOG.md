@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Memory-based reader paths dropping records after blank lines (#122)
+  - `ReadFromMemory` and `ReadAsSpan` from `ReadOnlyMemory<char>` terminated iteration at the first blank line in the middle of the input
+  - All five reader paths now continue parsing past blank lines uniformly
+
+### Performance
+- Unified the four `CsvReader` read loops behind a single JIT-devirtualized engine (#118)
+  - Sync, async, span, optimized-memory, and from-memory paths now share one implementation
+  - Struct line sources + struct row factories with generic constraints let the JIT monomorphize and inline per call site
+  - HeaderAbsent + multiline-first-record fix now applies uniformly to all five paths
+- Dropped the `ArrayPool<char>` rent/copy/return dance from `MemorySliceLineSource.Concat` (#119)
+  - The pool was rented and immediately discarded on every multiline continuation
+  - Direct `string.Concat`-based path is both simpler and faster
+- Primed the row split cache from the engine's multiline loop (#120)
+  - The engine already splits to detect unterminated quoted values; the result is now reused by the row instead of being re-split lazily on first column access
+- Pre-sized the split list using the known header count, avoiding `List<T>` grow-and-copy on the per-row hot path
+
+### Changed
+- Updated dependencies:
+  - microsoft.net.test.sdk to 18.5.1 (#117)
+  - mstest monorepo to 4.2.3 (#116)
+
 ## [2.0.217] - 2026-01-04
 
 ### Added
