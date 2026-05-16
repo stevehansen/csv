@@ -328,14 +328,14 @@ namespace Csv
                 var isFirstDataLineInHeaderAbsentMode = options.HeaderMode == HeaderMode.HeaderAbsent && index == (options.RowsToSkip + 1);
                 if (options.AllowNewLineInEnclosedFieldValues && !isFirstDataLineInHeaderAbsentMode)
                 {
-                    rawSplit = options.Splitter.Split(line, options);
+                    rawSplit = options.Splitter.Split(line, options, headers!.Length);
                     while (rawSplit.Count > 0 && CsvLineSplitter.IsUnterminatedQuotedValue(rawSplit[rawSplit.Count - 1].AsSpan(), options))
                     {
                         if (!source.TryReadLine(out var nextLine, out _))
                             break;
 
                         line = source.Concat(line, options.NewLine, nextLine, out lineString);
-                        rawSplit = options.Splitter.Split(line, options);
+                        rawSplit = options.Splitter.Split(line, options, headers!.Length);
                     }
                 }
 
@@ -434,7 +434,7 @@ namespace Csv
                 var isFirstDataLineInHeaderAbsentMode = options.HeaderMode == HeaderMode.HeaderAbsent && index == (options.RowsToSkip + 1);
                 if (options.AllowNewLineInEnclosedFieldValues && !isFirstDataLineInHeaderAbsentMode)
                 {
-                    rawSplit = options.Splitter.Split(line, options);
+                    rawSplit = options.Splitter.Split(line, options, headers!.Length);
                     while (rawSplit.Count > 0 && CsvLineSplitter.IsUnterminatedQuotedValue(rawSplit[rawSplit.Count - 1].AsSpan(), options))
                     {
                         var (nextOk, nextLine, _) = await source.TryReadLineAsync(ct).ConfigureAwait(false);
@@ -442,7 +442,7 @@ namespace Csv
                             break;
 
                         line = source.Concat(line, options.NewLine, nextLine, out lineString);
-                        rawSplit = options.Splitter.Split(line, options);
+                        rawSplit = options.Splitter.Split(line, options, headers!.Length);
                     }
                 }
 
