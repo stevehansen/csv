@@ -117,110 +117,7 @@ namespace Csv
         }
 
         private static IEnumerable<ICsvLineSpan> ReadSpanImpl(TextReader reader, CsvOptions? options)
-        {
-            options ??= new CsvOptions();
-
-            string? line;
-            var index = 0;
-            MemoryText[]? headers = null;
-            Dictionary<string, int>? headerLookup = null;
-            while ((line = reader.ReadLine()) != null)
-            {
-                index++;
-
-                var lineAsMemory = line.AsMemory();
-                if (index <= options.RowsToSkip || options.SkipRow?.Invoke(lineAsMemory, index) == true)
-                    continue;
-
-                if (headers == null || headerLookup == null)
-                {
-                    InitializeOptions(lineAsMemory.AsSpan(), options);
-                    var skipInitialLine = options.HeaderMode == HeaderMode.HeaderPresent;
-
-                    // For HeaderAbsent mode with multiline fields, we need to process the complete line first
-                    if (!skipInitialLine && options.AllowNewLineInEnclosedFieldValues)
-                    {
-                        // Process multiline fields to get the complete first data line
-                        var completeLineForHeaders = line;
-                        var tempSplitter = CsvLineSplitter.Get(options);
-                        var splitLine = tempSplitter.Split(lineAsMemory, options);
-                        
-                        while (splitLine.Any(f => CsvLineSplitter.IsUnterminatedQuotedValue(f.AsSpan(), options)))
-                        {
-                            var nextLine = reader.ReadLine();
-                            if (nextLine == null)
-                                break;
-                                
-                            completeLineForHeaders = StringHelpers.Concat(completeLineForHeaders.AsMemory(), options.NewLine, nextLine.AsMemory()).AsString();
-                            lineAsMemory = completeLineForHeaders.AsMemory();
-                            splitLine = tempSplitter.Split(lineAsMemory, options);
-                        }
-                        
-                        // Update line to the complete multiline version
-                        line = completeLineForHeaders;
-                        lineAsMemory = line.AsMemory();
-                    }
-
-                    headers = skipInitialLine ? GetHeaders(lineAsMemory, options) : CreateDefaultHeaders(lineAsMemory, options);
-
-                    try
-                    {
-                        headerLookup = CreateHeaderLookup(headers, options);
-                    }
-                    catch (ArgumentException)
-                    {
-                        throw new InvalidOperationException("Duplicate headers detected in HeaderPresent mode. If you don't have a header you can set the HeaderMode to HeaderAbsent.");
-                    }
-
-                    var aliases = options.Aliases;
-                    if (aliases != null)
-                    {
-                        foreach (var aliasGroup in aliases)
-                        {
-                            var groupIndex = -1;
-                            foreach (var alias in aliasGroup)
-                            {
-                                if (headerLookup.TryGetValue(alias, out var aliasIndex))
-                                {
-                                    if (groupIndex != -1)
-                                        throw new InvalidOperationException("Found multiple matches within alias group: " + string.Join(";", aliasGroup));
-
-                                    groupIndex = aliasIndex;
-                                }
-                            }
-
-                            if (groupIndex != -1)
-                            {
-                                foreach (var alias in aliasGroup)
-                                    headerLookup[alias] = groupIndex;
-                            }
-                        }
-                    }
-
-                    if (skipInitialLine)
-                        continue;
-                }
-
-                var record = new ReadLineSpan(headers!, headerLookup, index, line, options);
-                // Only process multiline if we haven't already done it for header creation
-                var isFirstDataLineInHeaderAbsentMode = (headers != null && options.HeaderMode == HeaderMode.HeaderAbsent && 
-                                                         record.Index == (options.RowsToSkip + 1));
-                if (options.AllowNewLineInEnclosedFieldValues && !isFirstDataLineInHeaderAbsentMode)
-                {
-                    while (record.RawSplitLine.Any(f => CsvLineSplitter.IsUnterminatedQuotedValue(f.AsSpan(), options)))
-                    {
-                        var nextLine = reader.ReadLine();
-                        if (nextLine == null)
-                            break;
-
-                        line = StringHelpers.Concat(line.AsMemory(), options.NewLine, nextLine.AsMemory()).AsString();
-                        record = new ReadLineSpan(headers!, headerLookup, index, line, options);
-                    }
-                }
-
-                yield return record;
-            }
-        }
+            => Enumerate<TextReaderLineSource, SpanRowFactory, ReadLineSpan>(new TextReaderLineSource(reader), default, options ?? new CsvOptions());
 
         /// <summary>
         /// Reads CSV data from memory with enhanced memory management options.
@@ -261,117 +158,7 @@ namespace Csv
         }
 
         private static IEnumerable<ICsvLineSpan> ReadFromMemoryOptimizedImpl(ReadOnlyMemory<char> csv, CsvOptions options, CsvMemoryOptions memoryOptions)
-        {
-            var position = 0;
-            var index = 0;
-            ReadOnlyMemory<char>[]? headers = null;
-            Dictionary<string, int>? headerLookup = null;
-
-            while (position < csv.Length)
-            {
-                var line = ReadLineOptimized(csv, ref position, memoryOptions);
-                if (line.IsEmpty) break;
-
-                index++;
-
-                if (index <= options.RowsToSkip || options.SkipRow?.Invoke(line, index) == true)
-                    continue;
-
-                if (headers == null || headerLookup == null)
-                {
-                    InitializeOptions(line.Span, options);
-                    var skipInitialLine = options.HeaderMode == HeaderMode.HeaderPresent;
-
-                    headers = skipInitialLine ? GetHeaders(line, options) : CreateDefaultHeaders(line, options);
-
-                    try
-                    {
-                        headerLookup = CreateHeaderLookup(headers, options);
-                    }
-                    catch (ArgumentException)
-                    {
-                        throw new InvalidOperationException("Duplicate headers detected in HeaderPresent mode. If you don't have a header you can set the HeaderMode to HeaderAbsent.");
-                    }
-
-                    if (skipInitialLine)
-                        continue;
-                }
-
-                var record = new ReadLineSpanOptimized(headers, headerLookup, index, line, options, memoryOptions);
-                if (options.AllowNewLineInEnclosedFieldValues)
-                {
-                    while (record.RawSplitLine.Any(f => CsvLineSplitter.IsUnterminatedQuotedValue(f.Span, options)))
-                    {
-                        var nextLine = ReadLineOptimized(csv, ref position, memoryOptions);
-                        if (nextLine.IsEmpty)
-                            break;
-
-                        line = ConcatenateMemory(line, options.NewLine.AsMemory(), nextLine, memoryOptions);
-                        record = new ReadLineSpanOptimized(headers, headerLookup, index, line, options, memoryOptions);
-                    }
-                }
-
-                yield return record;
-            }
-        }
-
-        private static ReadOnlyMemory<char> ReadLineOptimized(ReadOnlyMemory<char> source, ref int position, CsvMemoryOptions memoryOptions)
-        {
-            if (position >= source.Length)
-                return ReadOnlyMemory<char>.Empty;
-
-            var span = source.Span.Slice(position);
-            var newlineIndex = span.IndexOfAny('\n', '\r');
-            
-            if (newlineIndex == -1)
-            {
-                // Last line without newline
-                var result = source.Slice(position);
-                position = source.Length;
-                return result;
-            }
-
-            var lineLength = newlineIndex;
-            var line = source.Slice(position, lineLength);
-            
-            // Skip newline characters
-            position += lineLength;
-            if (position < source.Length)
-            {
-                var ch = source.Span[position];
-                if (ch == '\r' || ch == '\n')
-                {
-                    position++;
-                    // Handle CRLF
-                    if (position < source.Length && ch == '\r' && source.Span[position] == '\n')
-                        position++;
-                }
-            }
-
-            return line;
-        }
-
-        private static ReadOnlyMemory<char> ConcatenateMemory(ReadOnlyMemory<char> first, ReadOnlyMemory<char> separator, ReadOnlyMemory<char> second, CsvMemoryOptions memoryOptions)
-        {
-            var totalLength = first.Length + separator.Length + second.Length;
-            var buffer = memoryOptions.CharArrayPool.Rent(totalLength);
-            
-            try
-            {
-                var span = buffer.AsSpan();
-                first.Span.CopyTo(span);
-                separator.Span.CopyTo(span.Slice(first.Length));
-                second.Span.CopyTo(span.Slice(first.Length + separator.Length));
-                
-                var result = new char[totalLength];
-                span.Slice(0, totalLength).CopyTo(result);
-                return result.AsMemory();
-            }
-            finally
-            {
-                memoryOptions.CharArrayPool.Return(buffer);
-            }
-        }
+            => Enumerate<MemorySliceLineSource, OptimizedRowFactory, ReadLineSpanOptimized>(new MemorySliceLineSource(csv, memoryOptions), new OptimizedRowFactory(memoryOptions), options);
 
 #endif
 
@@ -394,114 +181,7 @@ namespace Csv
         }
 
         private static IEnumerable<ICsvLine> ReadImpl(TextReader reader, CsvOptions? options)
-        {
-            // NOTE: Logic is copied in ReadImpl/ReadImplAsync/ReadFromMemory
-            options ??= new CsvOptions();
-
-            string? line;
-            var index = 0;
-            MemoryText[]? headers = null;
-            Dictionary<string, int>? headerLookup = null;
-            while ((line = reader.ReadLine()) != null)
-            {
-                index++;
-
-                var lineAsMemory = line.AsMemory();
-                if (index <= options.RowsToSkip || options.SkipRow?.Invoke(lineAsMemory, index) == true)
-                    continue;
-
-                if (headers == null || headerLookup == null)
-                {
-                    InitializeOptions(lineAsMemory.AsSpan(), options);
-                    var skipInitialLine = options.HeaderMode == HeaderMode.HeaderPresent;
-
-                    // For HeaderAbsent mode with multiline fields, we need to process the complete line first
-                    if (!skipInitialLine && options.AllowNewLineInEnclosedFieldValues)
-                    {
-                        // Process multiline fields to get the complete first data line
-                        var completeLineForHeaders = line;
-                        var tempSplitter = CsvLineSplitter.Get(options);
-                        var splitLine = tempSplitter.Split(lineAsMemory, options);
-                        
-                        while (splitLine.Any(f => CsvLineSplitter.IsUnterminatedQuotedValue(f.AsSpan(), options)))
-                        {
-                            var nextLine = reader.ReadLine();
-                            if (nextLine == null)
-                                break;
-                                
-                            completeLineForHeaders += options.NewLine + nextLine;
-                            lineAsMemory = completeLineForHeaders.AsMemory();
-                            splitLine = tempSplitter.Split(lineAsMemory, options);
-                        }
-                        
-                        // Update line to the complete multiline version
-                        line = completeLineForHeaders;
-                        lineAsMemory = line.AsMemory();
-                    }
-
-                    headers = skipInitialLine ? GetHeaders(lineAsMemory, options) : CreateDefaultHeaders(lineAsMemory, options);
-
-                    try
-                    {
-                        headerLookup = CreateHeaderLookup(headers, options);
-                    }
-                    catch (ArgumentException)
-                    {
-                        throw new InvalidOperationException("Duplicate headers detected in HeaderPresent mode. If you don't have a header you can set the HeaderMode to HeaderAbsent.");
-                    }
-
-                    var aliases = options.Aliases;
-                    if (aliases != null)
-                    {
-                        // NOTE: For each group we need at most 1 match (i.e. SingleOrDefault)
-                        foreach (var aliasGroup in aliases)
-                        {
-                            var groupIndex = -1;
-                            foreach (var alias in aliasGroup)
-                            {
-                                if (headerLookup.TryGetValue(alias, out var aliasIndex))
-                                {
-                                    if (groupIndex != -1)
-                                        throw new InvalidOperationException("Found multiple matches within alias group: " + string.Join(";", aliasGroup));
-
-                                    groupIndex = aliasIndex;
-                                }
-                            }
-
-                            if (groupIndex != -1)
-                            {
-                                foreach (var alias in aliasGroup)
-                                    headerLookup[alias] = groupIndex;
-                            }
-                        }
-                    }
-
-                    if (skipInitialLine)
-                        continue;
-                }
-
-                var record = new ReadLine(headers!, headerLookup, index, line, options);
-                // Only process multiline if we haven't already done it for header creation
-                var isFirstDataLineInHeaderAbsentMode = (headers != null && options.HeaderMode == HeaderMode.HeaderAbsent && 
-                                                         record.Index == (options.RowsToSkip + 1));
-                if (options.AllowNewLineInEnclosedFieldValues && !isFirstDataLineInHeaderAbsentMode)
-                {
-                    // TODO: Move to CsvLineSplitter?
-                    // TODO: Shouldn't we only check the last part?
-                    while (record.RawSplitLine.Any(f => CsvLineSplitter.IsUnterminatedQuotedValue(f.AsSpan(), options)))
-                    {
-                        var nextLine = reader.ReadLine();
-                        if (nextLine == null)
-                            break;
-
-                        line += options.NewLine + nextLine;
-                        record = new ReadLine(headers!, headerLookup, index, line, options);
-                    }
-                }
-
-                yield return record;
-            }
-        }
+            => Enumerate<TextReaderLineSource, StringRowFactory, ReadLine>(new TextReaderLineSource(reader), default, options ?? new CsvOptions());
 
 #if NET8_0_OR_GREATER
         /// <summary>
@@ -557,86 +237,8 @@ namespace Csv
             return Impl(csv, options);
         }
 
-        private static async IAsyncEnumerable<ICsvLine> ReadImplAsync(TextReader reader, CsvOptions? options)
-        {
-            // NOTE: Logic is copied in ReadImpl/ReadImplAsync/ReadFromMemory
-            options ??= new CsvOptions();
-
-            string? line;
-            var index = 0;
-            MemoryText[]? headers = null;
-            Dictionary<string, int>? headerLookup = null;
-            while ((line = await reader.ReadLineAsync()) != null)
-            {
-                index++;
-
-                var lineAsMemory = line.AsMemory();
-                if (index <= options.RowsToSkip || options.SkipRow?.Invoke(lineAsMemory, index) == true)
-                    continue;
-
-                if (headers == null || headerLookup == null)
-                {
-                    InitializeOptions(lineAsMemory.Span, options);
-                    var skipInitialLine = options.HeaderMode == HeaderMode.HeaderPresent;
-
-                    headers = skipInitialLine ? GetHeaders(lineAsMemory, options) : CreateDefaultHeaders(lineAsMemory, options);
-
-                    try
-                    {
-                        headerLookup = CreateHeaderLookup(headers, options);
-                    }
-                    catch (ArgumentException)
-                    {
-                        throw new InvalidOperationException("Duplicate headers detected in HeaderPresent mode. If you don't have a header you can set the HeaderMode to HeaderAbsent.");
-                    }
-
-                    var aliases = options.Aliases;
-                    if (aliases != null)
-                    {
-                        // NOTE: For each group we need at most 1 match (i.e. SingleOrDefault)
-                        foreach (var aliasGroup in aliases)
-                        {
-                            var groupIndex = -1;
-                            foreach (var alias in aliasGroup)
-                            {
-                                if (headerLookup.TryGetValue(alias, out var aliasIndex))
-                                {
-                                    if (groupIndex != -1)
-                                        throw new InvalidOperationException("Found multiple matches within alias group: " + string.Join(";", aliasGroup));
-
-                                    groupIndex = aliasIndex;
-                                }
-                            }
-
-                            if (groupIndex != -1)
-                            {
-                                foreach (var alias in aliasGroup)
-                                    headerLookup[alias] = groupIndex;
-                            }
-                        }
-                    }
-
-                    if (skipInitialLine)
-                        continue;
-                }
-
-                var record = new ReadLine(headers!, headerLookup, index, line, options);
-                if (options.AllowNewLineInEnclosedFieldValues)
-                {
-                    while (record.RawSplitLine.Any(f => CsvLineSplitter.IsUnterminatedQuotedValue(f.AsSpan(), options)))
-                    {
-                        var nextLine = await reader.ReadLineAsync();
-                        if (nextLine == null)
-                            break;
-
-                        line += options.NewLine + nextLine;
-                        record = new ReadLine(headers!, headerLookup, index, line, options);
-                    }
-                }
-
-                yield return record;
-            }
-        }
+        private static IAsyncEnumerable<ICsvLine> ReadImplAsync(TextReader reader, CsvOptions? options)
+            => EnumerateAsync<AsyncTextReaderLineSource, StringRowFactory, ReadLine>(new AsyncTextReaderLineSource(reader), default, options ?? new CsvOptions());
 #endif
 
         private static char AutoDetectSeparator(SpanText sampleLine)
@@ -843,7 +445,7 @@ namespace Csv
                 return new ReadLine(headers, map, line.Index, line.Raw, new CsvOptions()) { parsedLine = values };
             }
         }
-        private sealed class ReadLine : ICsvLine
+        internal sealed class ReadLine : ICsvLine
         {
             private readonly Dictionary<string, int> headerLookup;
             private readonly CsvOptions options;
@@ -944,7 +546,7 @@ namespace Csv
 
 #if NET8_0_OR_GREATER
 
-        private sealed class ReadLineSpan : ICsvLineSpan
+        internal sealed class ReadLineSpan : ICsvLineSpan
         {
             private readonly Dictionary<string, int> headerLookup;
             private readonly CsvOptions options;
@@ -1085,7 +687,7 @@ namespace Csv
             public override string ToString() => Raw;
         }
 
-        private sealed class ReadLineSpanOptimized : ICsvLineSpan
+        internal sealed class ReadLineSpanOptimized : ICsvLineSpan
         {
             private readonly Dictionary<string, int> headerLookup;
             private readonly CsvOptions options;
