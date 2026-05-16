@@ -17,86 +17,9 @@ namespace Csv
         /// <param name="csv">The csv string to read the data from.</param>
         /// <param name="options">The optional options to use when reading.</param>
         public static IEnumerable<ICsvLineFromMemory> ReadFromMemory(MemoryText csv, CsvOptions? options = null)
-        {
-            // NOTE: Logic is copied in ReadImpl/ReadImplAsync/ReadFromMemory
-            options ??= new CsvOptions();
+            => Enumerate<MemoryReaderLineSource, MemoryRowFactory, ReadLineFromMemory>(new MemoryReaderLineSource(csv), default, options ?? new CsvOptions());
 
-            MemoryText line;
-            var index = 0;
-            var position = 0;
-            MemoryText[]? headers = null;
-            Dictionary<string, int>? headerLookup = null;
-            while (!(line = csv.ReadLine(ref position)).IsEmpty)
-            {
-                index++;
-                if (index <= options.RowsToSkip || options.SkipRow?.Invoke(line, index) == true)
-                    continue;
-
-                if (headers == null || headerLookup == null)
-                {
-                    InitializeOptions(line.Span, options);
-                    var skipInitialLine = options.HeaderMode == HeaderMode.HeaderPresent;
-
-                    headers = skipInitialLine ? GetHeaders(line, options) : CreateDefaultHeaders(line, options);
-
-                    try
-                    {
-                        headerLookup = CreateHeaderLookup(headers, options);
-                    }
-                    catch (ArgumentException)
-                    {
-                        throw new InvalidOperationException("Duplicate headers detected in HeaderPresent mode. If you don't have a header you can set the HeaderMode to HeaderAbsent.");
-                    }
-
-                    var aliases = options.Aliases;
-                    if (aliases != null)
-                    {
-                        // NOTE: For each group we need at most 1 match (i.e. SingleOrDefault)
-                        foreach (var aliasGroup in aliases)
-                        {
-                            var groupIndex = -1;
-                            foreach (var alias in aliasGroup)
-                            {
-                                if (headerLookup.TryGetValue(alias, out var aliasIndex))
-                                {
-                                    if (groupIndex != -1)
-                                        throw new InvalidOperationException("Found multiple matches within alias group: " + string.Join(";", aliasGroup));
-
-                                    groupIndex = aliasIndex;
-                                }
-                            }
-
-                            if (groupIndex != -1)
-                            {
-                                foreach (var alias in aliasGroup)
-                                    headerLookup[alias] = groupIndex;
-                            }
-                        }
-                    }
-
-                    if (skipInitialLine)
-                        continue;
-                }
-
-                var record = new ReadLineFromMemory(headers, headerLookup, index, line, options);
-                if (options.AllowNewLineInEnclosedFieldValues)
-                {
-                    while (record.RawSplitLine.Any(f => CsvLineSplitter.IsUnterminatedQuotedValue(f.AsSpan(), options)))
-                    {
-                        var nextLine = csv.ReadLine(ref position);
-                        if (nextLine.IsEmpty)
-                            break;
-
-                        line = StringHelpers.Concat(line, options.NewLine, nextLine);
-                        record = new ReadLineFromMemory(headers, headerLookup, index, line, options);
-                    }
-                }
-
-                yield return record;
-            }
-        }
-
-        private sealed class ReadLineFromMemory : ICsvLineFromMemory
+        internal sealed class ReadLineFromMemory : ICsvLineFromMemory
         {
             private readonly Dictionary<string, int> headerLookup;
             private readonly CsvOptions options;
