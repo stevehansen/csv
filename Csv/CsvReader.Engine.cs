@@ -35,7 +35,7 @@ namespace Csv
 
         internal interface IRowFactory<TRow> where TRow : class
         {
-            TRow Create(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, string? rawString, CsvOptions options);
+            TRow Create(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, string? rawString, IList<MemoryText>? rawSplit, CsvOptions options);
         }
 
         internal readonly struct TextReaderLineSource : ILineSource
@@ -188,22 +188,28 @@ namespace Csv
 
         internal readonly struct StringRowFactory : IRowFactory<ReadLine>
         {
-            public ReadLine Create(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, string? rawString, CsvOptions options)
+            public ReadLine Create(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, string? rawString, IList<MemoryText>? rawSplit, CsvOptions options)
             {
 #if NET8_0_OR_GREATER
-                return new ReadLine(headers, headerLookup, index, rawString ?? raw.ToString(), options);
+                var row = new ReadLine(headers, headerLookup, index, rawString ?? raw.ToString(), options);
 #else
-                return new ReadLine(headers, headerLookup, index, rawString ?? raw, options);
+                var row = new ReadLine(headers, headerLookup, index, rawString ?? raw, options);
 #endif
+                if (rawSplit != null)
+                    row.rawSplitLine = rawSplit;
+                return row;
             }
         }
 
 #if NET8_0_OR_GREATER
         internal readonly struct SpanRowFactory : IRowFactory<ReadLineSpan>
         {
-            public ReadLineSpan Create(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, string? rawString, CsvOptions options)
+            public ReadLineSpan Create(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, string? rawString, IList<MemoryText>? rawSplit, CsvOptions options)
             {
-                return new ReadLineSpan(headers, headerLookup, index, rawString ?? raw.ToString(), options);
+                var row = new ReadLineSpan(headers, headerLookup, index, rawString ?? raw.ToString(), options);
+                if (rawSplit != null)
+                    row.rawSplitLine = rawSplit;
+                return row;
             }
         }
 
@@ -216,17 +222,23 @@ namespace Csv
                 this.memoryOptions = memoryOptions;
             }
 
-            public ReadLineSpanOptimized Create(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, string? rawString, CsvOptions options)
+            public ReadLineSpanOptimized Create(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, string? rawString, IList<MemoryText>? rawSplit, CsvOptions options)
             {
-                return new ReadLineSpanOptimized(headers, headerLookup, index, raw, options, memoryOptions);
+                var row = new ReadLineSpanOptimized(headers, headerLookup, index, raw, options, memoryOptions);
+                if (rawSplit != null)
+                    row.rawSplitLine = rawSplit;
+                return row;
             }
         }
 
         internal readonly struct MemoryRowFactory : IRowFactory<ReadLineFromMemory>
         {
-            public ReadLineFromMemory Create(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, string? rawString, CsvOptions options)
+            public ReadLineFromMemory Create(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, string? rawString, IList<MemoryText>? rawSplit, CsvOptions options)
             {
-                return new ReadLineFromMemory(headers, headerLookup, index, raw, options);
+                var row = new ReadLineFromMemory(headers, headerLookup, index, raw, options);
+                if (rawSplit != null)
+                    row.rawSplitLine = rawSplit;
+                return row;
             }
         }
 #endif
@@ -249,6 +261,8 @@ namespace Csv
                 if (index <= options.RowsToSkip || options.SkipRow?.Invoke(line, index) == true)
                     continue;
 
+                IList<MemoryText>? rawSplit = null;
+
                 if (headers == null || headerLookup == null)
                 {
                     InitializeOptions(line.AsSpan(), options);
@@ -259,15 +273,15 @@ namespace Csv
                     // case via index == RowsToSkip + 1 and skips its own multiline pass to avoid double-reading.
                     if (!skipInitialLine && options.AllowNewLineInEnclosedFieldValues)
                     {
-                        var splitLine = options.Splitter.Split(line, options);
+                        rawSplit = options.Splitter.Split(line, options);
 
-                        while (splitLine.Count > 0 && CsvLineSplitter.IsUnterminatedQuotedValue(splitLine[splitLine.Count - 1].AsSpan(), options))
+                        while (rawSplit.Count > 0 && CsvLineSplitter.IsUnterminatedQuotedValue(rawSplit[rawSplit.Count - 1].AsSpan(), options))
                         {
                             if (!source.TryReadLine(out var nextLine, out _))
                                 break;
 
                             line = source.Concat(line, options.NewLine, nextLine, out lineString);
-                            splitLine = options.Splitter.Split(line, options);
+                            rawSplit = options.Splitter.Split(line, options);
                         }
                     }
 
@@ -314,7 +328,7 @@ namespace Csv
                 var isFirstDataLineInHeaderAbsentMode = options.HeaderMode == HeaderMode.HeaderAbsent && index == (options.RowsToSkip + 1);
                 if (options.AllowNewLineInEnclosedFieldValues && !isFirstDataLineInHeaderAbsentMode)
                 {
-                    var rawSplit = options.Splitter.Split(line, options);
+                    rawSplit = options.Splitter.Split(line, options);
                     while (rawSplit.Count > 0 && CsvLineSplitter.IsUnterminatedQuotedValue(rawSplit[rawSplit.Count - 1].AsSpan(), options))
                     {
                         if (!source.TryReadLine(out var nextLine, out _))
@@ -325,7 +339,7 @@ namespace Csv
                     }
                 }
 
-                yield return factory.Create(headers, headerLookup, index, line, lineString, options);
+                yield return factory.Create(headers, headerLookup, index, line, lineString, rawSplit, options);
             }
         }
 
@@ -352,6 +366,8 @@ namespace Csv
                 if (index <= options.RowsToSkip || options.SkipRow?.Invoke(line, index) == true)
                     continue;
 
+                IList<MemoryText>? rawSplit = null;
+
                 if (headers == null || headerLookup == null)
                 {
                     InitializeOptions(line.AsSpan(), options);
@@ -362,16 +378,16 @@ namespace Csv
                     // case via index == RowsToSkip + 1 and skips its own multiline pass to avoid double-reading.
                     if (!skipInitialLine && options.AllowNewLineInEnclosedFieldValues)
                     {
-                        var splitLine = options.Splitter.Split(line, options);
+                        rawSplit = options.Splitter.Split(line, options);
 
-                        while (splitLine.Count > 0 && CsvLineSplitter.IsUnterminatedQuotedValue(splitLine[splitLine.Count - 1].AsSpan(), options))
+                        while (rawSplit.Count > 0 && CsvLineSplitter.IsUnterminatedQuotedValue(rawSplit[rawSplit.Count - 1].AsSpan(), options))
                         {
                             var (nextOk, nextLine, _) = await source.TryReadLineAsync(ct).ConfigureAwait(false);
                             if (!nextOk)
                                 break;
 
                             line = source.Concat(line, options.NewLine, nextLine, out lineString);
-                            splitLine = options.Splitter.Split(line, options);
+                            rawSplit = options.Splitter.Split(line, options);
                         }
                     }
 
@@ -418,7 +434,7 @@ namespace Csv
                 var isFirstDataLineInHeaderAbsentMode = options.HeaderMode == HeaderMode.HeaderAbsent && index == (options.RowsToSkip + 1);
                 if (options.AllowNewLineInEnclosedFieldValues && !isFirstDataLineInHeaderAbsentMode)
                 {
-                    var rawSplit = options.Splitter.Split(line, options);
+                    rawSplit = options.Splitter.Split(line, options);
                     while (rawSplit.Count > 0 && CsvLineSplitter.IsUnterminatedQuotedValue(rawSplit[rawSplit.Count - 1].AsSpan(), options))
                     {
                         var (nextOk, nextLine, _) = await source.TryReadLineAsync(ct).ConfigureAwait(false);
@@ -430,7 +446,7 @@ namespace Csv
                     }
                 }
 
-                yield return factory.Create(headers, headerLookup, index, line, lineString, options);
+                yield return factory.Create(headers, headerLookup, index, line, lineString, rawSplit, options);
             }
         }
 #endif

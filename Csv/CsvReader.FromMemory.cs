@@ -23,7 +23,7 @@ namespace Csv
         {
             private readonly Dictionary<string, int> headerLookup;
             private readonly CsvOptions options;
-            private IList<MemoryText>? rawSplitLine;
+            internal IList<MemoryText>? rawSplitLine;
             private MemoryText[]? parsedLine;
 
             public ReadLineFromMemory(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, CsvOptions options)

@@ -450,7 +450,7 @@ namespace Csv
             private readonly Dictionary<string, int> headerLookup;
             private readonly CsvOptions options;
             private readonly MemoryText[] headers;
-            private IList<MemoryText>? rawSplitLine;
+            internal IList<MemoryText>? rawSplitLine;
             internal MemoryText[]? parsedLine;
 
             public ReadLine(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, string raw, CsvOptions options)
@@ -551,7 +551,7 @@ namespace Csv
             private readonly Dictionary<string, int> headerLookup;
             private readonly CsvOptions options;
             private readonly MemoryText[] headers;
-            private IList<MemoryText>? rawSplitLine;
+            internal IList<MemoryText>? rawSplitLine;
             internal MemoryText[]? parsedLine;
 
             public ReadLineSpan(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, string raw, CsvOptions options)
@@ -694,7 +694,7 @@ namespace Csv
             private readonly CsvMemoryOptions memoryOptions;
             private readonly ReadOnlyMemory<char>[] headers;
             private readonly ReadOnlyMemory<char> rawMemory;
-            private IList<ReadOnlyMemory<char>>? rawSplitLine;
+            internal IList<ReadOnlyMemory<char>>? rawSplitLine;
             private ReadOnlyMemory<char>[]? parsedLine;
 
             public ReadLineSpanOptimized(ReadOnlyMemory<char>[] headers, Dictionary<string, int> headerLookup, int index, ReadOnlyMemory<char> raw, CsvOptions options, CsvMemoryOptions memoryOptions)
