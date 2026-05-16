@@ -66,7 +66,10 @@ namespace Csv.Tests
             {
                 var byName = new Dictionary<string, string>();
                 foreach (var h in line.Headers)
-                    byName[h] = line[h];
+                {
+                    if (line.LineHasColumn(h))
+                        byName[h] = line[h];
+                }
 
                 result.Add(new Row
                 {
@@ -89,7 +92,10 @@ namespace Csv.Tests
             {
                 var byName = new Dictionary<string, string>();
                 foreach (var h in line.Headers)
-                    byName[h] = line[h];
+                {
+                    if (line.LineHasColumn(h))
+                        byName[h] = line[h];
+                }
 
                 result.Add(new Row
                 {
@@ -111,7 +117,10 @@ namespace Csv.Tests
             {
                 var byName = new Dictionary<string, string>();
                 foreach (var h in line.Headers)
-                    byName[h] = line[h];
+                {
+                    if (line.LineHasColumn(h))
+                        byName[h] = line[h];
+                }
 
                 result.Add(new Row
                 {
@@ -132,7 +141,10 @@ namespace Csv.Tests
             {
                 var byName = new Dictionary<string, string>();
                 foreach (var h in line.Headers)
-                    byName[h] = line[h];
+                {
+                    if (line.LineHasColumn(h))
+                        byName[h] = line[h];
+                }
 
                 result.Add(new Row
                 {
@@ -155,7 +167,10 @@ namespace Csv.Tests
                 var valueStrings = line.Values.Select(v => v.ToString()).ToArray();
                 var byName = new Dictionary<string, string>();
                 foreach (var h in headerStrings)
-                    byName[h] = line[h].ToString();
+                {
+                    if (line.LineHasColumn(h))
+                        byName[h] = line[h].ToString();
+                }
 
                 result.Add(new Row
                 {
@@ -606,5 +621,55 @@ namespace Csv.Tests
             System.Diagnostics.Trace.WriteLine($"ReadAsSpan over 1000 records allocated {delta} bytes.");
         }
 #endif
+
+        [TestMethod]
+        public void When_BlankLineInMiddleOfStream_Then_AllPathsContinueParsing()
+        {
+            const string csv = "a,b,c\n1,2,3\n\n4,5,6\n";
+
+            foreach (var path in AllPaths)
+            {
+                var rows = Run(path, csv, () => new CsvOptions());
+
+                Assert.AreEqual(2, rows.Count, $"{path}: expected 2 records after default SkipRow elides the blank line, got {rows.Count}");
+                Assert.AreEqual("1,2,3", rows[0].Raw, path.ToString());
+                Assert.AreEqual("4,5,6", rows[1].Raw, path.ToString());
+            }
+        }
+
+        [TestMethod]
+        public void When_BlankLineAndSkipRowDisabled_Then_AllPathsReturnEmptyRecord()
+        {
+            const string csv = "a,b,c\n1,2,3\n\n4,5,6\n";
+
+            foreach (var path in AllPaths)
+            {
+                var rows = Run(path, csv, () => new CsvOptions
+                {
+                    SkipRow = (_, _) => false,
+                    ValidateColumnCount = false,
+                    ReturnEmptyForMissingColumn = true,
+                });
+
+                Assert.AreEqual(3, rows.Count, $"{path}: expected 3 records when SkipRow is disabled (blank line surfaces as empty record), got {rows.Count}");
+                Assert.AreEqual("1,2,3", rows[0].Raw, path.ToString());
+                Assert.AreEqual(string.Empty, rows[1].Raw, path.ToString());
+                Assert.AreEqual("4,5,6", rows[2].Raw, path.ToString());
+            }
+        }
+
+        [TestMethod]
+        public void When_TrailingBlankLine_Then_AllPathsTerminateAfterLastRecord()
+        {
+            const string csv = "a,b,c\n1,2,3\n\n";
+
+            foreach (var path in AllPaths)
+            {
+                var rows = Run(path, csv, () => new CsvOptions());
+
+                Assert.AreEqual(1, rows.Count, $"{path}: expected exactly 1 record, got {rows.Count}");
+                Assert.AreEqual("1,2,3", rows[0].Raw, path.ToString());
+            }
+        }
     }
 }

@@ -134,31 +134,17 @@ namespace Csv
                 {
                     line = csv.Slice(position);
                     position = csv.Length;
-                    return !line.IsEmpty;
+                    return true;
                 }
 
-                var lineLength = newlineIndex;
-                var slice = csv.Slice(position, lineLength);
+                line = csv.Slice(position, newlineIndex);
+                position += newlineIndex;
 
-                position += lineLength;
-                if (position < csv.Length)
-                {
-                    var ch = csv.Span[position];
-                    if (ch == '\r' || ch == '\n')
-                    {
-                        position++;
-                        if (position < csv.Length && ch == '\r' && csv.Span[position] == '\n')
-                            position++;
-                    }
-                }
+                var ch = csv.Span[position];
+                position++;
+                if (position < csv.Length && ch == '\r' && csv.Span[position] == '\n')
+                    position++;
 
-                if (slice.IsEmpty)
-                {
-                    line = default;
-                    return false;
-                }
-
-                line = slice;
                 return true;
             }
 
@@ -210,7 +196,7 @@ namespace Csv
                 }
 
                 line = csv.ReadLine(ref position);
-                return !line.IsEmpty;
+                return true;
             }
 
             public MemoryText Concat(MemoryText head, string newLine, MemoryText tail, out string? combined)
