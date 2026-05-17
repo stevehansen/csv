@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Memory-based reader paths dropping records after blank lines (#122)
   - `ReadFromMemory` and `ReadAsSpan` from `ReadOnlyMemory<char>` terminated iteration at the first blank line in the middle of the input
   - All five reader paths now continue parsing past blank lines uniformly
+- Unescaped inner quotes in quoted fields throwing `InvalidOperationException` (#114)
+  - Fields like `"JOHN "WAYNE""` (a quoted field containing unescaped inner quotes) now parse leniently with the inner quotes preserved as literal characters
+  - Fix landed incidentally with the engine unification in #118; covered by regression tests against the originally reported `FMBC_EMPPERS.csv` across all read paths
 
 ### Performance
 - Unified the four `CsvReader` read loops behind a single JIT-devirtualized engine (#118)
@@ -23,6 +26,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Primed the row split cache from the engine's multiline loop (#120)
   - The engine already splits to detect unterminated quoted values; the result is now reused by the row instead of being re-split lazily on first column access
 - Pre-sized the split list using the known header count, avoiding `List<T>` grow-and-copy on the per-row hot path
+- Cached `SearchValues<char>` and switched to `string.Create` in the writer paths
+  - `CsvBufferWriter.WriteCell` and `CsvWriter`'s Memory-variant write paths were allocating a fresh `SearchValues<char>` on every cell because `MemoryExtensions.IndexOfAny(ReadOnlySpan,ReadOnlySpan)` builds one internally for vectorized search; now cached in a static field with the variable separator checked via `Contains`
+  - `CsvBufferWriter.ToString` allocated an intermediate `char[]` before copying into the final string; now uses `string.Create` for a single allocation
+  - One-shot `WriteCsv + ToString` allocations dropped from ~3.0x the `StringBuilder` path to ~0.78x, constant across 100 → 100k rows
 
 ### Changed
 - Updated dependencies:
