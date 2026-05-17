@@ -13,6 +13,12 @@ namespace Csv
     /// </summary>
     public sealed class CsvBufferWriter : IBufferWriter<char>, IDisposable
     {
+        // The separator is per-call so it can't be baked into a single cached SearchValues.
+        // Keep the fixed escape chars cached and check the separator with a separate Contains.
+        // Without this caching, MemoryExtensions.IndexOfAny(ReadOnlySpan, ReadOnlySpan) builds
+        // a fresh SearchValues<char> on the heap every call (~72 bytes per WriteCell).
+        private static readonly SearchValues<char> FixedEscapeChars = SearchValues.Create("'\n\r");
+
         private readonly CsvMemoryOptions _options;
         private readonly List<(char[] buffer, int written, bool isPooled)> _buffers;
         private char[]? _currentBuffer;
@@ -98,8 +104,7 @@ namespace Csv
         public void WriteCell(ReadOnlySpan<char> cell, char separator = ',')
         {
             var needsQuoteEscape = cell.Contains('"');
-            ReadOnlySpan<char> escapeChars = stackalloc char[] { separator, '\'', '\n', '\r' };
-            var needsGeneralEscape = cell.IndexOfAny(escapeChars) >= 0;
+            var needsGeneralEscape = cell.Contains(separator) || cell.IndexOfAny(FixedEscapeChars) >= 0;
 
             if (needsQuoteEscape || needsGeneralEscape)
             {
@@ -210,27 +215,30 @@ namespace Csv
             if (_totalWritten == 0)
                 return string.Empty;
 
-            var result = new char[_totalWritten];
-            var resultSpan = result.AsSpan();
-            var offset = 0;
+            // string.Create writes directly into the new string's storage — avoids the
+            // intermediate char[_totalWritten] + new string(char[]) double-copy that the
+            // previous implementation paid (an extra _totalWritten * 2 bytes per call).
+            return string.Create(_totalWritten, this, FillResult);
+        }
 
-            foreach (var (buffer, written, _) in _buffers)
+        private static readonly SpanAction<char, CsvBufferWriter> FillResult = (destination, self) =>
+        {
+            var offset = 0;
+            foreach (var (buffer, written, _) in self._buffers)
             {
-                if (offset >= _totalWritten) break;
-                
-                var length = Math.Min(written, _totalWritten - offset);
-                buffer.AsSpan(0, length).CopyTo(resultSpan.Slice(offset, length));
+                if (offset >= self._totalWritten) break;
+
+                var length = Math.Min(written, self._totalWritten - offset);
+                buffer.AsSpan(0, length).CopyTo(destination.Slice(offset, length));
                 offset += length;
             }
 
-            if (_currentBuffer != null && _currentPosition > 0 && offset < _totalWritten)
+            if (self._currentBuffer != null && self._currentPosition > 0 && offset < self._totalWritten)
             {
-                var length = Math.Min(_currentPosition, _totalWritten - offset);
-                _currentBuffer.AsSpan(0, length).CopyTo(resultSpan.Slice(offset, length));
+                var length = Math.Min(self._currentPosition, self._totalWritten - offset);
+                self._currentBuffer.AsSpan(0, length).CopyTo(destination.Slice(offset, length));
             }
-
-            return new string(result);
-        }
+        };
 
         /// <summary>
         /// Copies the written content to the specified span.

@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 #if NET8_0_OR_GREATER
+using System.Buffers;
 using MemoryText = System.ReadOnlyMemory<char>;
 using SpanText = System.ReadOnlySpan<char>;
 #else
@@ -20,6 +21,14 @@ namespace Csv
     /// </summary>
     public static class CsvWriter
     {
+#if NET8_0_OR_GREATER
+        // The separator is per-call so it can't be baked into a single cached SearchValues.
+        // Keep the fixed escape chars cached and check the separator with a separate Contains.
+        // Without this caching, MemoryExtensions.IndexOfAny(ReadOnlySpan, ReadOnlySpan)/char[]
+        // builds a fresh SearchValues<char> on the heap every call.
+        private static readonly SearchValues<char> FixedEscapeChars = SearchValues.Create("'\n");
+#endif
+
         /// <summary>
         /// Writes the lines to the writer without headers. Column count is determined from the first data line.
         /// </summary>
@@ -566,7 +575,6 @@ namespace Csv
 
         private static void WriteLineMemory(TextWriter writer, ReadOnlyMemory<char>[] data, int columnCount, char separator)
         {
-            var escapeChars = new[] { separator, '\'', '\n' };
             for (var i = 0; i < columnCount; i++)
             {
                 if (i > 0)
@@ -575,7 +583,7 @@ namespace Csv
                 if (i < data.Length)
                 {
                     var cell = data[i];
-                    WriteCellMemory(writer, cell.Span, separator, escapeChars);
+                    WriteCellMemory(writer, cell.Span, separator);
                 }
             }
 
@@ -584,7 +592,6 @@ namespace Csv
 
         private static void WriteLineMemorySpan(TextWriter writer, ReadOnlySpan<ReadOnlyMemory<char>> data, int columnCount, char separator)
         {
-            var escapeChars = new[] { separator, '\'', '\n' };
             for (var i = 0; i < columnCount; i++)
             {
                 if (i > 0)
@@ -593,7 +600,7 @@ namespace Csv
                 if (i < data.Length)
                 {
                     var cell = data[i];
-                    WriteCellMemory(writer, cell.Span, separator, escapeChars);
+                    WriteCellMemory(writer, cell.Span, separator);
                 }
             }
 
@@ -601,18 +608,12 @@ namespace Csv
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void WriteCellMemory(TextWriter writer, ReadOnlySpan<char> cell, char separator, char[] escapeChars)
+        private static void WriteCellMemory(TextWriter writer, ReadOnlySpan<char> cell, char separator)
         {
-            var escape = false;
-            
-            // Check if we need to escape
             if (cell.Contains('"'))
             {
-                escape = true;
-                // Need to escape quotes by doubling them
-                if (escape)
-                    writer.Write('"');
-                
+                writer.Write('"');
+
                 for (int i = 0; i < cell.Length; i++)
                 {
                     var ch = cell[i];
@@ -621,13 +622,11 @@ namespace Csv
                     else
                         writer.Write(ch);
                 }
-                
-                if (escape)
-                    writer.Write('"');
+
+                writer.Write('"');
             }
-            else if (cell.IndexOfAny(escapeChars) >= 0)
+            else if (cell.Contains(separator) || cell.IndexOfAny(FixedEscapeChars) >= 0)
             {
-                escape = true;
                 writer.Write('"');
                 writer.Write(cell);
                 writer.Write('"');
@@ -672,13 +671,10 @@ namespace Csv
         {
             written = 0;
             var pos = 0;
-            var escape = false;
-            var escapeChars = new[] { separator, '\'', '\n' };
 
-            // Check if we need to escape
             var needsQuoteEscape = cell.Contains('"');
-            var needsGeneralEscape = cell.IndexOfAny(escapeChars) >= 0;
-            escape = needsQuoteEscape || needsGeneralEscape;
+            var needsGeneralEscape = cell.Contains(separator) || cell.IndexOfAny(FixedEscapeChars) >= 0;
+            var escape = needsQuoteEscape || needsGeneralEscape;
 
             if (escape)
             {

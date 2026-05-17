@@ -194,12 +194,12 @@ namespace Csv.Tests
             var memoryRatio = (double)bufferMemory / traditionalMemory;
             Console.WriteLine($"Traditional: {traditionalMemory:N0} bytes, buffer: {bufferMemory:N0} bytes, ratio: {memoryRatio:F2}x");
 
-            // For the one-shot WriteCsv + ToString pattern measured here, the buffer writer
-            // sits at ~3x the traditional path's allocations and the ratio is stable from
-            // 100 to 100k rows — the buffer writer's value is in CopyTo / reuse / streaming
-            // scenarios, not "build a CSV string once." This bound is a regression tripwire.
-            Assert.IsLessThanOrEqualTo(traditionalMemory * 4.0, bufferMemory,
-                $"Buffer writer one-shot allocations should stay within ~4x the traditional writer (traditional: {traditionalMemory:N0}, buffer: {bufferMemory:N0}, ratio: {memoryRatio:F2}x)");
+            // The buffer writer sits at ~0.75-0.80x the traditional StringBuilder path's
+            // allocations and the ratio is stable from 100 to 100k rows. This bound is a
+            // regression tripwire — it catches reintroduction of the per-WriteCell
+            // SearchValues allocation or the ToString intermediate char[].
+            Assert.IsLessThanOrEqualTo(traditionalMemory, bufferMemory,
+                $"Buffer writer one-shot allocations should not exceed the traditional writer (traditional: {traditionalMemory:N0}, buffer: {bufferMemory:N0}, ratio: {memoryRatio:F2}x)");
         }
     }
 }
