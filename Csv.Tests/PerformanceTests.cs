@@ -155,60 +155,51 @@ namespace Csv.Tests
                 .Select(i => new[] { $"Person{i}", $"{20 + i % 60}", $"City{i % 10}", $"{i * 1.5:F1}" })
                 .ToArray();
 
-            // Force garbage collection before test
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
-
-            var beforeMemory = GC.GetTotalMemory(false);
-
-            // Traditional approach
-            var traditionalResult = CsvWriter.WriteToText(headers, stringRows);
-
-            var afterTraditional = GC.GetTotalMemory(false);
-
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
-
-            var beforeBuffer = GC.GetTotalMemory(false);
-
-            // Buffer writer approach - estimate required size to minimize allocations
-            var estimatedSize = (headers.Length + stringRows.Length) * 50; // Rough estimate
-            var optimizedOptions = new CsvMemoryOptions
-            {
-                InitialBufferSize = Math.Min(estimatedSize, 2048),  // Size based on data
-                DirectAllocationThreshold = estimatedSize + 1024   // Use direct allocation for this test
-            };
-            using var bufferWriter = new CsvBufferWriter(optimizedOptions);
+            // Pre-build the Memory<char> view of the same input so the input-adaptation cost
+            // is excluded from the buffer writer's measurement window — it isn't part of
+            // CsvBufferWriter and would otherwise dominate the comparison at 1000 rows.
             var headerMemories = headers.Select(h => h.AsMemory()).ToArray();
             var memoryRows = stringRows.Select(row => row.Select(cell => cell.AsMemory()).ToArray()).ToArray();
+
+            var estimatedSize = (headers.Length + stringRows.Length) * 50;
+            var optimizedOptions = new CsvMemoryOptions
+            {
+                InitialBufferSize = Math.Min(estimatedSize, 2048),
+                DirectAllocationThreshold = estimatedSize + 1024
+            };
+            // Warm up both code paths so first-call JIT cost doesn't land on whichever runs first.
+            _ = CsvWriter.WriteToText(headers, stringRows);
+            using (var warmup = new CsvBufferWriter(optimizedOptions))
+            {
+                warmup.WriteCsv(headerMemories.AsSpan(), memoryRows);
+                _ = warmup.ToString();
+            }
+
+            using var bufferWriter = new CsvBufferWriter(optimizedOptions);
+
+            // GC.GetAllocatedBytesForCurrentThread() is a deterministic per-thread allocation
+            // counter — unaffected by other tests, GC timing, or background JIT, unlike
+            // GC.GetTotalMemory() which measures the whole-process heap delta.
+            var beforeTraditional = GC.GetAllocatedBytesForCurrentThread();
+            var traditionalResult = CsvWriter.WriteToText(headers, stringRows);
+            var traditionalMemory = GC.GetAllocatedBytesForCurrentThread() - beforeTraditional;
+
+            var beforeBuffer = GC.GetAllocatedBytesForCurrentThread();
             bufferWriter.WriteCsv(headerMemories.AsSpan(), memoryRows);
             var bufferResult = bufferWriter.ToString();
+            var bufferMemory = GC.GetAllocatedBytesForCurrentThread() - beforeBuffer;
 
-            var afterBuffer = GC.GetTotalMemory(false);
-
-            // Results should be identical
             Assert.AreEqual(traditionalResult, bufferResult);
 
-            // Calculate memory usage
-            var traditionalMemory = afterTraditional - beforeMemory;
-            var bufferMemory = afterBuffer - beforeBuffer;
-
-            Console.WriteLine($"Traditional memory usage: {traditionalMemory:N0} bytes");
-            Console.WriteLine($"Buffer writer memory usage: {bufferMemory:N0} bytes");
-            Console.WriteLine($"Memory reduction: {(1.0 - (double)bufferMemory / traditionalMemory) * 100:F1}%");
-
-            // Buffer writer optimizes for large datasets and reuse scenarios.
-            // For small datasets, the Memory<char> conversion overhead may cause higher memory usage.
-            // This is acceptable as buffer writers target high-throughput scenarios with large data.
             var memoryRatio = (double)bufferMemory / traditionalMemory;
-            Console.WriteLine($"Memory ratio (buffer/traditional): {memoryRatio:F2}x");
+            Console.WriteLine($"Traditional: {traditionalMemory:N0} bytes, buffer: {bufferMemory:N0} bytes, ratio: {memoryRatio:F2}x");
 
-            // For small test datasets, allow higher memory usage due to Memory<char> conversion overhead
-            // In real-world large dataset scenarios, buffer writers show significant memory benefits
-            Assert.IsLessThanOrEqualTo(traditionalMemory * 7.0,
-bufferMemory, $"Buffer writer memory overhead should be reasonable for small datasets (traditional: {traditionalMemory:N0}, buffer: {bufferMemory:N0}, ratio: {memoryRatio:F2}x)");
+            // For the one-shot WriteCsv + ToString pattern measured here, the buffer writer
+            // sits at ~3x the traditional path's allocations and the ratio is stable from
+            // 100 to 100k rows — the buffer writer's value is in CopyTo / reuse / streaming
+            // scenarios, not "build a CSV string once." This bound is a regression tripwire.
+            Assert.IsLessThanOrEqualTo(traditionalMemory * 4.0, bufferMemory,
+                $"Buffer writer one-shot allocations should stay within ~4x the traditional writer (traditional: {traditionalMemory:N0}, buffer: {bufferMemory:N0}, ratio: {memoryRatio:F2}x)");
         }
     }
 }
