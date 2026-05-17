@@ -29,12 +29,26 @@ namespace Csv
             if (value.Length == 0 || !options.AllowEnclosedFieldValues)
                 return false;
 
+            // When TrimData is set, the splitter accepts a quote opening after leading
+            // whitespace (see Split below). Apply the same leniency here so multiline
+            // detection agrees with the splitter — otherwise a field like ` "foo` would
+            // be split as quoted but considered terminated, dropping the continuation.
+            var start = 0;
+            if (options.TrimData)
+            {
+                while (start < value.Length && IsWhitespace(value[start]))
+                    start++;
+
+                if (start >= value.Length)
+                    return false;
+            }
+
             char quoteChar;
-            if (value[0] == '"')
+            if (value[start] == '"')
             {
                 quoteChar = '"';
             }
-            else if (options.AllowSingleQuoteToEncloseFieldValues && value[0] == '\'')
+            else if (options.AllowSingleQuoteToEncloseFieldValues && value[start] == '\'')
             {
                 quoteChar = '\'';
             }
@@ -44,10 +58,33 @@ namespace Csv
             }
 
 #if NET8_0_OR_GREATER
-            return IsUnterminatedQuotedValueCore(value[1..], quoteChar, options.AllowBackSlashToEscapeQuote, options.AllowNewLineInEnclosedFieldValues);
+            return IsUnterminatedQuotedValueCore(value[(start + 1)..], quoteChar, options.AllowBackSlashToEscapeQuote, options.AllowNewLineInEnclosedFieldValues);
 #else
-            return IsUnterminatedQuotedValueCore(value.Substring(1), quoteChar, options.AllowBackSlashToEscapeQuote, options.AllowNewLineInEnclosedFieldValues);
+            return IsUnterminatedQuotedValueCore(value.Substring(start + 1), quoteChar, options.AllowBackSlashToEscapeQuote, options.AllowNewLineInEnclosedFieldValues);
 #endif
+        }
+
+        private static bool IsWhitespace(char ch) => ch == ' ' || ch == '\t';
+
+        // A quote may open a quoted field either at the literal field start or, when
+        // TrimData is set, after any run of leading whitespace. This matches the
+        // user-visible promise of TrimData: surrounding whitespace doesn't break the
+        // structure of a quoted cell (issue #71).
+        private static bool IsAtFieldOpen(SpanText span, int start, int i, bool trimData)
+        {
+            if (i == start)
+                return true;
+
+            if (!trimData)
+                return false;
+
+            for (var k = start; k < i; k++)
+            {
+                if (!IsWhitespace(span[k]))
+                    return false;
+            }
+
+            return true;
         }
 
         private static bool IsUnterminatedQuotedValueCore(SpanText value, char quoteChar, bool allowBackslashEscape, bool allowNewLineInEnclosedFieldValues)
@@ -184,7 +221,7 @@ namespace Csv
                         values.Add(value);
                         start = i + 1;
                     }
-                    else if (options.AllowEnclosedFieldValues && (ch == '"' || (options.AllowSingleQuoteToEncloseFieldValues && ch == '\'')) && i == start)
+                    else if (options.AllowEnclosedFieldValues && (ch == '"' || (options.AllowSingleQuoteToEncloseFieldValues && ch == '\'')) && IsAtFieldOpen(span, start, i, options.TrimData))
                     {
                         inQuotes = true;
                         quoteChar = ch;

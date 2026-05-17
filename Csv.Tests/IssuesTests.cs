@@ -195,5 +195,74 @@ D;1;2;3;;
             Assert.AreEqual("JOHN \"WAYNE\"", nameFirst(lines[1]));
             Assert.AreEqual("JILL", nameFirst(lines[2]));
         }
+
+        // Issue #71: With TrimData=true, a quoted field preceded by whitespace
+        // (`A, ",,"`) was split as four columns because the splitter only entered
+        // quote mode when the quote sat at the literal field start. The splitter now
+        // accepts an opening quote after any run of leading whitespace whenever
+        // TrimData is set, matching the user-visible promise of that option.
+        [TestMethod]
+        [TestCategory("Issues")]
+        public void Issue_71_QuotedCommas_WithLeadingSpace_TrimData()
+        {
+            const string input = "A, \",,\"\nA,\",,\"";
+            var options = new CsvOptions
+            {
+                HeaderMode = HeaderMode.HeaderAbsent,
+                TrimData = true,
+            };
+
+            var lines = CsvReader.ReadFromText(input, options).ToArray();
+
+            Assert.HasCount(2, lines);
+            Assert.AreEqual(2, lines[0].ColumnCount, "row with space before quote");
+            Assert.AreEqual(2, lines[1].ColumnCount, "row without space (already worked)");
+            Assert.AreEqual("A", lines[0][0]);
+            Assert.AreEqual(",,", lines[0][1]);
+            Assert.AreEqual("A", lines[1][0]);
+            Assert.AreEqual(",,", lines[1][1]);
+        }
+
+        [TestMethod]
+        [TestCategory("Issues")]
+        public void Issue_71_LeadingSpace_Strict_StillTreatedAsUnquoted()
+        {
+            // Without TrimData, the strict behavior is preserved: a leading space
+            // before the quote keeps the field unquoted so the inner commas split.
+            const string input = "A, \",,\"";
+            var options = new CsvOptions
+            {
+                HeaderMode = HeaderMode.HeaderAbsent,
+                TrimData = false,
+            };
+
+            var line = CsvReader.ReadFromText(input, options).Single();
+
+            Assert.AreEqual(4, line.ColumnCount);
+        }
+
+        [TestMethod]
+        [TestCategory("Issues")]
+        public void Issue_71_QuotedMultiline_WithLeadingSpace_TrimData()
+        {
+            // Multiline continuation must agree with the splitter: a leading-space
+            // quoted field that spans lines still has to be recognized as unterminated.
+            const string input = "A, \"foo\nbar\"\nB,2";
+            var options = new CsvOptions
+            {
+                HeaderMode = HeaderMode.HeaderAbsent,
+                TrimData = true,
+                AllowNewLineInEnclosedFieldValues = true,
+            };
+
+            var lines = CsvReader.ReadFromText(input, options).ToArray();
+
+            Assert.HasCount(2, lines);
+            Assert.AreEqual(2, lines[0].ColumnCount);
+            Assert.AreEqual("A", lines[0][0]);
+            Assert.AreEqual("foo\r\nbar", lines[0][1]);
+            Assert.AreEqual("B", lines[1][0]);
+            Assert.AreEqual("2", lines[1][1]);
+        }
     }
 }

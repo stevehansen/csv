@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Unescaped inner quotes in quoted fields throwing `InvalidOperationException` (#114)
   - Fields like `"JOHN "WAYNE""` (a quoted field containing unescaped inner quotes) now parse leniently with the inner quotes preserved as literal characters
   - Fix landed incidentally with the engine unification in #118; covered by regression tests against the originally reported `FMBC_EMPPERS.csv` across all read paths
+- Quoted commas split as separate columns when the opening quote was preceded by whitespace under `TrimData=true` (#71)
+  - `A, ",,"` was parsed as four columns because the splitter only entered quote mode when the `"` sat at the exact field start; the leading space pushed it one position past `start` and the inner commas were treated as separators
+  - With `TrimData=true`, the splitter now accepts an opening quote after any run of leading whitespace, and `IsUnterminatedQuotedValue` applies the same leniency so multiline continuation agrees with the splitter
+  - Strict (non-`TrimData`) behavior is preserved: ` "...` without `TrimData` still parses as an unquoted field
 
 ### Performance
 - Unified the four `CsvReader` read loops behind a single JIT-devirtualized engine (#118)
