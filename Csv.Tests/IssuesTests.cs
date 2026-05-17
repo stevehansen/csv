@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -146,6 +147,53 @@ D;1;2;3;;
 
             Assert.Contains("Duplicate headers detected", ex.Message,
                 "Expected duplicate headers error message");
+        }
+
+        private static string LoadIssue114Csv() =>
+            System.IO.File.ReadAllText(System.IO.Path.Combine(
+                System.IO.Path.GetDirectoryName(typeof(IssuesTests).Assembly.Location)!,
+                "issue114.csv"));
+
+        // Issue #114: FMBC_EMPPERS.csv contains a quoted field with unescaped inner
+        // quotes (`"JOHN "WAYNE""`). On v2.0.217 the parser threw
+        // InvalidOperationException with a column-count mismatch. The engine
+        // unification (commit 24cea69) treats stray inner quotes leniently and
+        // preserves them as literal characters in the field value.
+
+        [TestMethod]
+        [TestCategory("Issues")]
+        public void Issue_114_ReadFromText()
+        {
+            var lines = CsvReader.ReadFromText(LoadIssue114Csv(), new CsvOptions { Separator = ',' }).ToList();
+            AssertIssue114(lines, l => l["EepNameFirst"]);
+        }
+
+        [TestMethod]
+        [TestCategory("Issues")]
+        public void Issue_114_ReadFromTextAsSpan()
+        {
+            var lines = CsvReader.ReadFromTextAsSpan(LoadIssue114Csv(), new CsvOptions { Separator = ',' }).ToList();
+            AssertIssue114(lines, l => l["EepNameFirst"]);
+        }
+
+        [TestMethod]
+        [TestCategory("Issues")]
+        public void Issue_114_ReadFromMemoryOptimized()
+        {
+            var lines = CsvReader.ReadFromMemoryOptimized(LoadIssue114Csv().AsMemory(), new CsvOptions { Separator = ',' }).ToList();
+            AssertIssue114(lines, l => l["EepNameFirst"]);
+        }
+
+        private static void AssertIssue114<TLine>(System.Collections.Generic.List<TLine> lines, System.Func<TLine, string> nameFirst)
+            where TLine : ICsvLine
+        {
+            Assert.HasCount(3, lines, "Should parse all 3 data rows");
+            Assert.AreEqual(98, lines[0].ColumnCount);
+            Assert.AreEqual(98, lines[1].ColumnCount);
+            Assert.AreEqual(98, lines[2].ColumnCount);
+            Assert.AreEqual("JOE", nameFirst(lines[0]).TrimEnd());
+            Assert.AreEqual("JOHN \"WAYNE\"", nameFirst(lines[1]));
+            Assert.AreEqual("JILL", nameFirst(lines[2]));
         }
     }
 }
