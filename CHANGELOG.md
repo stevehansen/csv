@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.245] - 2026-05-17
+
 ### Fixed
 - Memory-based reader paths dropping records after blank lines (#122)
   - `ReadFromMemory` and `ReadAsSpan` from `ReadOnlyMemory<char>` terminated iteration at the first blank line in the middle of the input
@@ -268,6 +270,7 @@ The library was initially released with comprehensive CSV reading and writing fu
 
 For more details on each release, see the [commit history](https://github.com/stevehansen/csv/commits/master) or visit the [NuGet package page](https://www.nuget.org/packages/Csv/).
 
+[2.0.245]: https://www.nuget.org/packages/Csv/2.0.245
 [2.0.217]: https://www.nuget.org/packages/Csv/2.0.217
 [2.0.205]: https://www.nuget.org/packages/Csv/2.0.205
 [2.0.170]: https://www.nuget.org/packages/Csv/2.0.170
