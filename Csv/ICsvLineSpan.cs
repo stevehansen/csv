@@ -7,7 +7,7 @@ using SpanText = System.ReadOnlySpan<char>;
 namespace Csv
 {
     /// <summary>
-    /// Enhanced CSV line interface with Span/Memory support for zero-allocation data access.
+    /// Enhanced CSV record interface with Span/Memory support for zero-allocation data access.
     /// </summary>
     public interface ICsvLineSpan : ICsvLine
     {
@@ -48,9 +48,9 @@ namespace Csv
         ReadOnlyMemory<char> GetMemory(string name);
 
         /// <summary>
-        /// Gets the data for the specified column index as ReadOnlyMemory&lt;char&gt;.
+        /// Gets the field at the specified index as ReadOnlyMemory&lt;char&gt;.
         /// </summary>
-        /// <param name="index">The zero-based index of the column.</param>
+        /// <param name="index">The zero-based field index.</param>
         ReadOnlyMemory<char> GetMemory(int index);
 
         /// <summary>
@@ -60,41 +60,41 @@ namespace Csv
         ReadOnlySpan<char> GetSpan(string name);
 
         /// <summary>
-        /// Gets the data for the specified column index as ReadOnlySpan&lt;char&gt;.
+        /// Gets the field at the specified index as ReadOnlySpan&lt;char&gt;.
         /// </summary>
-        /// <param name="index">The zero-based index of the column.</param>
+        /// <param name="index">The zero-based field index.</param>
         ReadOnlySpan<char> GetSpan(int index);
 
         /// <summary>
         /// Tries to get the data for the specified named header as ReadOnlyMemory&lt;char&gt;.
         /// </summary>
         /// <param name="name">The name of the header.</param>
-        /// <param name="value">When this method returns, contains the memory for the column if found; otherwise, empty.</param>
-        /// <returns>true if the column was found; otherwise, false.</returns>
+        /// <param name="value">When this method returns, contains the memory for the field if found; otherwise, empty.</param>
+        /// <returns>true if the field was found; otherwise, false.</returns>
         bool TryGetMemory(string name, out ReadOnlyMemory<char> value);
 
         /// <summary>
         /// Tries to get the data for the specified column index as ReadOnlyMemory&lt;char&gt;.
         /// </summary>
-        /// <param name="index">The zero-based index of the column.</param>
-        /// <param name="value">When this method returns, contains the memory for the column if found; otherwise, empty.</param>
-        /// <returns>true if the column was found; otherwise, false.</returns>
+        /// <param name="index">The zero-based field index.</param>
+        /// <param name="value">When this method returns, contains the memory for the field if found; otherwise, empty.</param>
+        /// <returns>true if the field was found; otherwise, false.</returns>
         bool TryGetMemory(int index, out ReadOnlyMemory<char> value);
 
         /// <summary>
         /// Tries to get the data for the specified named header as ReadOnlySpan&lt;char&gt;.
         /// </summary>
         /// <param name="name">The name of the header.</param>
-        /// <param name="value">When this method returns, contains the span for the column if found; otherwise, empty.</param>
-        /// <returns>true if the column was found; otherwise, false.</returns>
+        /// <param name="value">When this method returns, contains the span for the field if found; otherwise, empty.</param>
+        /// <returns>true if the field was found; otherwise, false.</returns>
         bool TryGetSpan(string name, out ReadOnlySpan<char> value);
 
         /// <summary>
         /// Tries to get the data for the specified column index as ReadOnlySpan&lt;char&gt;.
         /// </summary>
-        /// <param name="index">The zero-based index of the column.</param>
-        /// <param name="value">When this method returns, contains the span for the column if found; otherwise, empty.</param>
-        /// <returns>true if the column was found; otherwise, false.</returns>
+        /// <param name="index">The zero-based field index.</param>
+        /// <param name="value">When this method returns, contains the span for the field if found; otherwise, empty.</param>
+        /// <returns>true if the field was found; otherwise, false.</returns>
         bool TryGetSpan(int index, out ReadOnlySpan<char> value);
     }
 }

@@ -46,7 +46,7 @@ namespace Csv
         public HeaderMode HeaderMode { get; set; } = HeaderMode.HeaderPresent;
 
         /// <summary>
-        /// Gets or sets whether a row should be validated immediately that the column count matches the header count, defaults to <c>false</c>.
+        /// Gets or sets whether each row is validated immediately so that its field count matches the header count, defaults to <c>false</c>.
         /// </summary>
         public bool ValidateColumnCount { get; set; }
 
@@ -56,7 +56,7 @@ namespace Csv
         public bool ReturnEmptyForMissingColumn { get; set; }
 
         /// <summary>
-        /// Can be used to use multiple names for a single column. (e.g. to allow "CategoryName", "Category Name", "Category-Name")
+        /// Can be used to map multiple names to a single header/column. (e.g. to allow "CategoryName", "Category Name", "Category-Name")
         /// </summary>
         /// <remarks>
         /// A group with no matches is ignored.

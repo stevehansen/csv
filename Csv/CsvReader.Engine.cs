@@ -196,7 +196,7 @@ namespace Csv
                 var row = new ReadLine(headers, headerLookup, index, rawString ?? raw, options);
 #endif
                 if (rawSplit != null)
-                    row.rawSplitLine = rawSplit;
+                    row.rawFields = rawSplit;
                 return row;
             }
         }
@@ -208,7 +208,7 @@ namespace Csv
             {
                 var row = new ReadLineSpan(headers, headerLookup, index, rawString ?? raw.ToString(), options);
                 if (rawSplit != null)
-                    row.rawSplitLine = rawSplit;
+                    row.rawFields = rawSplit;
                 return row;
             }
         }
@@ -226,7 +226,7 @@ namespace Csv
             {
                 var row = new ReadLineSpanOptimized(headers, headerLookup, index, raw, options, memoryOptions);
                 if (rawSplit != null)
-                    row.rawSplitLine = rawSplit;
+                    row.rawFields = rawSplit;
                 return row;
             }
         }
@@ -237,7 +237,7 @@ namespace Csv
             {
                 var row = new ReadLineFromMemory(headers, headerLookup, index, raw, options);
                 if (rawSplit != null)
-                    row.rawSplitLine = rawSplit;
+                    row.rawFields = rawSplit;
                 return row;
             }
         }
