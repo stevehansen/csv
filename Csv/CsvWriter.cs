@@ -27,12 +27,13 @@ namespace Csv
         // Without this caching, MemoryExtensions.IndexOfAny(ReadOnlySpan, ReadOnlySpan)/char[]
         // builds a fresh SearchValues<char> on the heap every call.
         private static readonly SearchValues<char> FixedEscapeChars = SearchValues.Create("'\n\r");
-#endif
-
+#else
         // RFC 4180: a field must be quoted when it contains a quote, the separator, CR, or LF.
-        // The separator varies per call, so only the fixed triggers are cached here as a shared
-        // array (scanned alongside a separate separator check) to avoid a per-row char[] allocation.
+        // Kept as a shared array (scanned alongside a separate separator check) so WriteLine
+        // doesn't allocate a per-row char[] on the netstandard2.0 path. NET8+ uses the
+        // vectorized SearchValues above instead.
         private static readonly char[] FixedEscapeCharsArray = { '\'', '\n', '\r' };
+#endif
 
         /// <summary>
         /// Writes the lines to the writer without headers. Column count is determined from the first data line.
@@ -491,7 +492,11 @@ namespace Csv
                         escape = true;
                         cell = cell.Replace("\"", "\"\"");
                     }
+#if NET8_0_OR_GREATER
+                    else if (cell.Contains(separator) || cell.AsSpan().IndexOfAny(FixedEscapeChars) >= 0)
+#else
                     else if (cell.IndexOf(separator) >= 0 || cell.IndexOfAny(FixedEscapeCharsArray) >= 0)
+#endif
                         escape = true;
 
                     if (escape)
@@ -558,7 +563,11 @@ namespace Csv
                         // Write closing quote
                         await writer.WriteAsync('"').ConfigureAwait(false);
                     }
+#if NET8_0_OR_GREATER
+                    else if (cell.Contains(separator) || cell.AsSpan().IndexOfAny(FixedEscapeChars) >= 0)
+#else
                     else if (cell.IndexOf(separator) >= 0 || cell.IndexOfAny(FixedEscapeCharsArray) >= 0)
+#endif
                     {
                         await writer.WriteAsync('"').ConfigureAwait(false);
                         await writer.WriteAsync(cell).ConfigureAwait(false);
