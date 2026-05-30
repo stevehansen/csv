@@ -14,10 +14,10 @@ namespace Csv
     public sealed class CsvBufferWriter : IBufferWriter<char>, IDisposable
     {
         // The separator is per-call so it can't be baked into a single cached SearchValues.
-        // Keep the fixed escape chars cached and check the separator with a separate Contains.
+        // Keep the fixed quote-trigger chars cached and check the separator with a separate Contains.
         // Without this caching, MemoryExtensions.IndexOfAny(ReadOnlySpan, ReadOnlySpan) builds
         // a fresh SearchValues<char> on the heap every call (~72 bytes per WriteCell).
-        private static readonly SearchValues<char> FixedEscapeChars = SearchValues.Create("'\n\r");
+        private static readonly SearchValues<char> QuoteTriggerChars = SearchValues.Create("'\n\r");
 
         private readonly CsvMemoryOptions _options;
         private readonly List<(char[] buffer, int written, bool isPooled)> _buffers;
@@ -96,7 +96,7 @@ namespace Csv
         }
 
         /// <summary>
-        /// Writes a single cell with proper CSV escaping.
+        /// Writes a single cell with proper CSV quoting and escaping.
         /// </summary>
         /// <param name="cell">The cell content.</param>
         /// <param name="separator">The column separator character.</param>
@@ -104,9 +104,9 @@ namespace Csv
         public void WriteCell(ReadOnlySpan<char> cell, char separator = ',')
         {
             var needsQuoteEscape = cell.Contains('"');
-            var needsGeneralEscape = cell.Contains(separator) || cell.IndexOfAny(FixedEscapeChars) >= 0;
+            var needsQuoting = cell.Contains(separator) || cell.IndexOfAny(QuoteTriggerChars) >= 0;
 
-            if (needsQuoteEscape || needsGeneralEscape)
+            if (needsQuoteEscape || needsQuoting)
             {
                 Write('"');
                 
