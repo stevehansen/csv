@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `CsvWriter` not quoting fields that contain a bare carriage return (`\r`)
+  - Per RFC 4180 a field containing CR, LF, the separator, or a quote must be quoted; `CsvWriter` only triggered on `\n`, the separator, `'`, and `"`, so a value like `a\rb` was written unquoted — mis-parsed by strict readers and split into two records when re-read
+  - `CsvBufferWriter` already included `\r`; all `CsvWriter` paths (sync, async, and the `ReadOnlyMemory<char>` paths) now match it
+
+### Performance
+- Removed a per-row `char[]` allocation in `CsvWriter.WriteLine`/`WriteLineAsync` by caching the fixed quote-trigger characters in a static array and checking the variable separator separately
+
 ## [2.0.245] - 2026-05-17
 
 ### Fixed
