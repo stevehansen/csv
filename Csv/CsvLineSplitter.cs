@@ -11,7 +11,7 @@ using SpanText = System.String;
 namespace Csv
 {
     /// <summary>
-    /// Splits a single line (multiline handling is done independently) into multiple parts
+    /// Splits a single record's text (multiline handling is done independently) into its fields
     /// </summary>
     internal sealed class CsvLineSplitter
     {
@@ -69,7 +69,7 @@ namespace Csv
         // A quote may open a quoted field either at the literal field start or, when
         // TrimData is set, after any run of leading whitespace. This matches the
         // user-visible promise of TrimData: surrounding whitespace doesn't break the
-        // structure of a quoted cell (issue #71).
+        // structure of a quoted field (issue #71).
         private static bool IsAtFieldOpen(SpanText span, int start, int i, bool trimData)
         {
             if (i == start)

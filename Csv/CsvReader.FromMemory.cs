@@ -12,7 +12,7 @@ namespace Csv
     partial class CsvReader
     {
         /// <summary>
-        /// Reads the lines from the csv string.
+        /// Reads the records from the csv string.
         /// </summary>
         /// <param name="csv">The csv string to read the data from.</param>
         /// <param name="options">The optional options to use when reading.</param>
@@ -23,8 +23,8 @@ namespace Csv
         {
             private readonly Dictionary<string, int> headerLookup;
             private readonly CsvOptions options;
-            internal IList<MemoryText>? rawSplitLine;
-            private MemoryText[]? parsedLine;
+            internal IList<MemoryText>? rawFields;
+            private MemoryText[]? parsedValues;
 
             public ReadLineFromMemory(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, CsvOptions options)
             {
@@ -41,7 +41,7 @@ namespace Csv
 
             public int Index { get; }
 
-            public int ColumnCount => Line.Length;
+            public int ColumnCount => ParsedValues.Length;
 
             public bool HasColumn(string name) => headerLookup.ContainsKey(name);
 
@@ -50,28 +50,28 @@ namespace Csv
                 if (!headerLookup.TryGetValue(name, out var index))
                     return false;
 
-                return RawSplitLine.Count > index;
+                return RawFields.Count > index;
             }
 
-            internal IList<MemoryText> RawSplitLine => rawSplitLine ??= SplitLine(Raw, options);
+            internal IList<MemoryText> RawFields => rawFields ??= SplitLine(Raw, options);
 
-            public MemoryText[] Values => Line;
+            public MemoryText[] Values => ParsedValues;
 
-            private MemoryText[] Line
+            private MemoryText[] ParsedValues
             {
                 get
                 {
-                    if (parsedLine == null)
+                    if (parsedValues == null)
                     {
-                        var raw = RawSplitLine;
+                        var raw = RawFields;
 
                         if (options.ValidateColumnCount && raw.Count != Headers.Length)
                             throw new InvalidOperationException($"Expected {Headers.Length}, got {raw.Count} columns.");
 
-                        parsedLine = Trim(raw, options);
+                        parsedValues = Trim(raw, options);
                     }
 
-                    return parsedLine;
+                    return parsedValues;
                 }
             }
 
@@ -89,16 +89,16 @@ namespace Csv
 
                     try
                     {
-                        return Line[index];
+                        return ParsedValues[index];
                     }
                     catch (IndexOutOfRangeException)
                     {
-                        throw new InvalidOperationException($"Invalid row, missing {name} header, expected {Headers.Length} columns, got {Line.Length} columns.");
+                        throw new InvalidOperationException($"Invalid row, missing {name} header, expected {Headers.Length} columns, got {ParsedValues.Length} columns.");
                     }
                 }
             }
 
-            MemoryText ICsvLineFromMemory.this[int index] => Line[index];
+            MemoryText ICsvLineFromMemory.this[int index] => ParsedValues[index];
 
             public override string ToString()
             {

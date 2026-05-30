@@ -19,7 +19,7 @@ namespace Csv
     public static partial class CsvReader
     {
         /// <summary>
-        /// Reads the lines from the reader.
+        /// Reads the records from the reader.
         /// </summary>
         /// <param name="reader">The text reader to read the data from.</param>
         /// <param name="options">The optional options to use when reading.</param>
@@ -32,7 +32,7 @@ namespace Csv
         }
 
         /// <summary>
-        /// Reads the lines from the stream.
+        /// Reads the records from the stream.
         /// </summary>
         /// <param name="stream">The stream to read the data from.</param>
         /// <param name="options">The optional options to use when reading.</param>
@@ -45,7 +45,7 @@ namespace Csv
         }
 
         /// <summary>
-        /// Reads the lines from the csv string.
+        /// Reads the records from the csv string.
         /// </summary>
         /// <param name="csv">The csv string to read the data from.</param>
         /// <param name="options">The optional options to use when reading.</param>
@@ -60,7 +60,7 @@ namespace Csv
 #if NET8_0_OR_GREATER
 
         /// <summary>
-        /// Reads the lines from the reader with enhanced Span/Memory support.
+        /// Reads the records from the reader with enhanced Span/Memory support.
         /// </summary>
         /// <param name="reader">The text reader to read the data from.</param>
         /// <param name="options">The optional options to use when reading.</param>
@@ -73,7 +73,7 @@ namespace Csv
         }
 
         /// <summary>
-        /// Reads the lines from the stream with enhanced Span/Memory support.
+        /// Reads the records from the stream with enhanced Span/Memory support.
         /// </summary>
         /// <param name="stream">The stream to read the data from.</param>
         /// <param name="options">The optional options to use when reading.</param>
@@ -86,7 +86,7 @@ namespace Csv
         }
 
         /// <summary>
-        /// Reads the lines from the csv string with enhanced Span/Memory support.
+        /// Reads the records from the csv string with enhanced Span/Memory support.
         /// </summary>
         /// <param name="csv">The csv string to read the data from.</param>
         /// <param name="options">The optional options to use when reading.</param>
@@ -125,7 +125,7 @@ namespace Csv
         /// <param name="csv">The CSV data as ReadOnlyMemory.</param>
         /// <param name="options">The CSV parsing options.</param>
         /// <param name="memoryOptions">The memory management options.</param>
-        /// <returns>An enumerable of CSV lines with memory optimization.</returns>
+        /// <returns>An enumerable of CSV records with memory optimization.</returns>
         public static IEnumerable<ICsvLineSpan> ReadFromMemoryOptimized(ReadOnlyMemory<char> csv, CsvOptions? options = null, CsvMemoryOptions? memoryOptions = null)
         {
             options ??= new CsvOptions();
@@ -185,7 +185,7 @@ namespace Csv
 
 #if NET8_0_OR_GREATER
         /// <summary>
-        /// Reads the lines from the reader.
+        /// Reads the records from the reader.
         /// </summary>
         /// <param name="reader">The text reader to read the data from.</param>
         /// <param name="options">The optional options to use when reading.</param>
@@ -198,7 +198,7 @@ namespace Csv
         }
 
         /// <summary>
-        /// Reads the lines from the stream.
+        /// Reads the records from the stream.
         /// </summary>
         /// <param name="stream">The stream to read the data from.</param>
         /// <param name="options">The optional options to use when reading.</param>
@@ -218,7 +218,7 @@ namespace Csv
         }
 
         /// <summary>
-        /// Reads the lines from the csv string.
+        /// Reads the records from the csv string.
         /// </summary>
         /// <param name="csv">The csv string to read the data from.</param>
         /// <param name="options">The optional options to use when reading.</param>
@@ -442,7 +442,7 @@ namespace Csv
                     headers = line.Headers.Skip(start).Take(length).Select(x=>x.AsMemory()).ToArray();
                 MemoryText[] values = headers.Select(x => line[x.ToString()].AsMemory()).ToArray();
                 Dictionary<string, int> map = Enumerable.Range(0, headers.Length).ToDictionary(x => headers[x].ToString());
-                return new ReadLine(headers, map, line.Index, line.Raw, new CsvOptions()) { parsedLine = values };
+                return new ReadLine(headers, map, line.Index, line.Raw, new CsvOptions()) { parsedValues = values };
             }
         }
         internal sealed class ReadLine : ICsvLine
@@ -450,8 +450,8 @@ namespace Csv
             private readonly Dictionary<string, int> headerLookup;
             private readonly CsvOptions options;
             private readonly MemoryText[] headers;
-            internal IList<MemoryText>? rawSplitLine;
-            internal MemoryText[]? parsedLine;
+            internal IList<MemoryText>? rawFields;
+            internal MemoryText[]? parsedValues;
 
             public ReadLine(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, string raw, CsvOptions options)
             {
@@ -468,7 +468,7 @@ namespace Csv
 
             public int Index { get; }
 
-            public int ColumnCount => Line.Length;
+            public int ColumnCount => ParsedValues.Length;
 
             public bool HasColumn(string name) => headerLookup.ContainsKey(name);
 
@@ -477,39 +477,39 @@ namespace Csv
                 if (!headerLookup.TryGetValue(name, out var index))
                     return false;
 
-                return RawSplitLine.Count > index;
+                return RawFields.Count > index;
             }
 
-            internal IList<MemoryText> RawSplitLine
+            internal IList<MemoryText> RawFields
             {
                 get
                 {
 #if NET8_0_OR_GREATER
-                    rawSplitLine ??= SplitLine(Raw.AsMemory(), options, headers.Length);
+                    rawFields ??= SplitLine(Raw.AsMemory(), options, headers.Length);
 #else
-                    rawSplitLine ??= SplitLine(Raw, options, headers.Length);
+                    rawFields ??= SplitLine(Raw, options, headers.Length);
 #endif
-                    return rawSplitLine;
+                    return rawFields;
                 }
             }
 
-            public string[] Values => Line.Select(it => it.AsString()).ToArray();
+            public string[] Values => ParsedValues.Select(it => it.AsString()).ToArray();
 
-            private MemoryText[] Line
+            private MemoryText[] ParsedValues
             {
                 get
                 {
-                    if (parsedLine == null)
+                    if (parsedValues == null)
                     {
-                        var raw = RawSplitLine;
+                        var raw = RawFields;
 
                         if (options.ValidateColumnCount && raw.Count != Headers.Length)
                             throw new InvalidOperationException($"Expected {Headers.Length}, got {raw.Count} columns.");
 
-                        parsedLine = Trim(raw, options);
+                        parsedValues = Trim(raw, options);
                     }
 
-                    return parsedLine;
+                    return parsedValues;
                 }
             }
 
@@ -527,16 +527,16 @@ namespace Csv
 
                     try
                     {
-                        return Line[index].AsString();
+                        return ParsedValues[index].AsString();
                     }
                     catch (IndexOutOfRangeException)
                     {
-                        throw new InvalidOperationException($"Invalid row, missing {name} header, expected {Headers.Length} columns, got {Line.Length} columns.");
+                        throw new InvalidOperationException($"Invalid row, missing {name} header, expected {Headers.Length} columns, got {ParsedValues.Length} columns.");
                     }
                 }
             }
 
-            string ICsvLine.this[int index] => Line[index].AsString();
+            string ICsvLine.this[int index] => ParsedValues[index].AsString();
 
             public override string ToString()
             {
@@ -551,8 +551,8 @@ namespace Csv
             private readonly Dictionary<string, int> headerLookup;
             private readonly CsvOptions options;
             private readonly MemoryText[] headers;
-            internal IList<MemoryText>? rawSplitLine;
-            internal MemoryText[]? parsedLine;
+            internal IList<MemoryText>? rawFields;
+            internal MemoryText[]? parsedValues;
 
             public ReadLineSpan(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, string raw, CsvOptions options)
             {
@@ -572,7 +572,7 @@ namespace Csv
             public ReadOnlySpan<char> RawSpan => Raw.AsSpan();
 
             public int Index { get; }
-            public int ColumnCount => Line.Length;
+            public int ColumnCount => ParsedValues.Length;
 
             public bool HasColumn(string name) => headerLookup.ContainsKey(name);
 
@@ -581,30 +581,30 @@ namespace Csv
                 if (!headerLookup.TryGetValue(name, out var index))
                     return false;
 
-                return RawSplitLine.Count > index;
+                return RawFields.Count > index;
             }
 
-            internal IList<MemoryText> RawSplitLine => rawSplitLine ??= SplitLine(Raw.AsMemory(), options, headers.Length);
+            internal IList<MemoryText> RawFields => rawFields ??= SplitLine(Raw.AsMemory(), options, headers.Length);
 
-            public string[] Values => Line.Select(it => it.AsString()).ToArray();
-            public ReadOnlyMemory<char>[] ValuesMemory => Line;
+            public string[] Values => ParsedValues.Select(it => it.AsString()).ToArray();
+            public ReadOnlyMemory<char>[] ValuesMemory => ParsedValues;
             public ReadOnlySpan<char> ValuesSpan => throw new NotSupportedException("ValuesSpan not supported for array access. Use GetSpan(int) or GetMemory(int) for individual values.");
 
-            private MemoryText[] Line
+            private MemoryText[] ParsedValues
             {
                 get
                 {
-                    if (parsedLine == null)
+                    if (parsedValues == null)
                     {
-                        var raw = RawSplitLine;
+                        var raw = RawFields;
 
                         if (options.ValidateColumnCount && raw.Count != Headers.Length)
                             throw new InvalidOperationException($"Expected {Headers.Length}, got {raw.Count} columns.");
 
-                        parsedLine = Trim(raw, options);
+                        parsedValues = Trim(raw, options);
                     }
 
-                    return parsedLine;
+                    return parsedValues;
                 }
             }
 
@@ -623,24 +623,24 @@ namespace Csv
 
                 try
                 {
-                    return Line[index];
+                    return ParsedValues[index];
                 }
                 catch (IndexOutOfRangeException)
                 {
-                    throw new InvalidOperationException($"Invalid row, missing {name} header, expected {Headers.Length} columns, got {Line.Length} columns.");
+                    throw new InvalidOperationException($"Invalid row, missing {name} header, expected {Headers.Length} columns, got {ParsedValues.Length} columns.");
                 }
             }
 
-            public ReadOnlyMemory<char> GetMemory(int index) => Line[index];
+            public ReadOnlyMemory<char> GetMemory(int index) => ParsedValues[index];
 
             public ReadOnlySpan<char> GetSpan(string name) => GetMemory(name).Span;
             public ReadOnlySpan<char> GetSpan(int index) => GetMemory(index).Span;
 
             public bool TryGetMemory(string name, out ReadOnlyMemory<char> value)
             {
-                if (headerLookup.TryGetValue(name, out var index) && index < Line.Length)
+                if (headerLookup.TryGetValue(name, out var index) && index < ParsedValues.Length)
                 {
-                    value = Line[index];
+                    value = ParsedValues[index];
                     return true;
                 }
 
@@ -650,9 +650,9 @@ namespace Csv
 
             public bool TryGetMemory(int index, out ReadOnlyMemory<char> value)
             {
-                if (index >= 0 && index < Line.Length)
+                if (index >= 0 && index < ParsedValues.Length)
                 {
-                    value = Line[index];
+                    value = ParsedValues[index];
                     return true;
                 }
 
@@ -694,8 +694,8 @@ namespace Csv
             private readonly CsvMemoryOptions memoryOptions;
             private readonly ReadOnlyMemory<char>[] headers;
             private readonly ReadOnlyMemory<char> rawMemory;
-            internal IList<ReadOnlyMemory<char>>? rawSplitLine;
-            private ReadOnlyMemory<char>[]? parsedLine;
+            internal IList<ReadOnlyMemory<char>>? rawFields;
+            private ReadOnlyMemory<char>[]? parsedValues;
 
             public ReadLineSpanOptimized(ReadOnlyMemory<char>[] headers, Dictionary<string, int> headerLookup, int index, ReadOnlyMemory<char> raw, CsvOptions options, CsvMemoryOptions memoryOptions)
             {
@@ -716,7 +716,7 @@ namespace Csv
             public ReadOnlySpan<char> RawSpan => rawMemory.Span;
 
             public int Index { get; }
-            public int ColumnCount => Line.Length;
+            public int ColumnCount => ParsedValues.Length;
 
             public bool HasColumn(string name) => headerLookup.ContainsKey(name);
 
@@ -725,30 +725,30 @@ namespace Csv
                 if (!headerLookup.TryGetValue(name, out var index))
                     return false;
 
-                return RawSplitLine.Count > index;
+                return RawFields.Count > index;
             }
 
-            internal IList<ReadOnlyMemory<char>> RawSplitLine => rawSplitLine ??= SplitLineOptimized(rawMemory, options, memoryOptions, headers.Length);
+            internal IList<ReadOnlyMemory<char>> RawFields => rawFields ??= SplitLineOptimized(rawMemory, options, memoryOptions, headers.Length);
 
-            public string[] Values => Line.Select(v => v.ToString()).ToArray();
-            public ReadOnlyMemory<char>[] ValuesMemory => Line;
+            public string[] Values => ParsedValues.Select(v => v.ToString()).ToArray();
+            public ReadOnlyMemory<char>[] ValuesMemory => ParsedValues;
             public ReadOnlySpan<char> ValuesSpan => throw new NotSupportedException("ValuesSpan not supported for array access. Use GetSpan(int) or GetMemory(int) for individual values.");
 
-            private ReadOnlyMemory<char>[] Line
+            private ReadOnlyMemory<char>[] ParsedValues
             {
                 get
                 {
-                    if (parsedLine == null)
+                    if (parsedValues == null)
                     {
-                        var raw = RawSplitLine;
+                        var raw = RawFields;
 
                         if (options.ValidateColumnCount && raw.Count != Headers.Length)
                             throw new InvalidOperationException($"Expected {Headers.Length}, got {raw.Count} columns.");
 
-                        parsedLine = TrimOptimized(raw, options, memoryOptions);
+                        parsedValues = TrimOptimized(raw, options, memoryOptions);
                     }
 
-                    return parsedLine;
+                    return parsedValues;
                 }
             }
 
@@ -767,24 +767,24 @@ namespace Csv
 
                 try
                 {
-                    return Line[index];
+                    return ParsedValues[index];
                 }
                 catch (IndexOutOfRangeException)
                 {
-                    throw new InvalidOperationException($"Invalid row, missing {name} header, expected {Headers.Length} columns, got {Line.Length} columns.");
+                    throw new InvalidOperationException($"Invalid row, missing {name} header, expected {Headers.Length} columns, got {ParsedValues.Length} columns.");
                 }
             }
 
-            public ReadOnlyMemory<char> GetMemory(int index) => Line[index];
+            public ReadOnlyMemory<char> GetMemory(int index) => ParsedValues[index];
 
             public ReadOnlySpan<char> GetSpan(string name) => GetMemory(name).Span;
             public ReadOnlySpan<char> GetSpan(int index) => GetMemory(index).Span;
 
             public bool TryGetMemory(string name, out ReadOnlyMemory<char> value)
             {
-                if (headerLookup.TryGetValue(name, out var index) && index < Line.Length)
+                if (headerLookup.TryGetValue(name, out var index) && index < ParsedValues.Length)
                 {
-                    value = Line[index];
+                    value = ParsedValues[index];
                     return true;
                 }
 
@@ -794,9 +794,9 @@ namespace Csv
 
             public bool TryGetMemory(int index, out ReadOnlyMemory<char> value)
             {
-                if (index >= 0 && index < Line.Length)
+                if (index >= 0 && index < ParsedValues.Length)
                 {
-                    value = Line[index];
+                    value = ParsedValues[index];
                     return true;
                 }
 

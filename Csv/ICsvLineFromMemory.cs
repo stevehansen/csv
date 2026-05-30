@@ -5,7 +5,7 @@ using MemoryText = System.ReadOnlyMemory<char>;
 namespace Csv
 {
     /// <summary>
-    /// Represents a single data line inside a csv file.
+    /// Represents a single record (data row) parsed from a csv file.
     /// </summary>
     public interface ICsvLineFromMemory
     {
@@ -25,12 +25,12 @@ namespace Csv
         MemoryText Raw { get; }
 
         /// <summary>
-        /// Gets the 1-based index for the line inside the file.
+        /// Gets the 1-based index of this record within the file.
         /// </summary>
         int Index { get; }
 
         /// <summary>
-        /// Gets the number of columns of the line.
+        /// Gets the number of fields in this record.
         /// </summary>
         int ColumnCount { get; }
 
@@ -41,7 +41,7 @@ namespace Csv
 
         /// <summary>
         /// Indicates whether the specified <paramref name="name"/> exists and
-        /// the current line contains a value for it.
+        /// this record contains a value for it.
         /// </summary>
         bool LineHasColumn(string name);
 
@@ -52,9 +52,9 @@ namespace Csv
         MemoryText this[string name] { get; }
 
         /// <summary>
-        /// Gets the data for the specified indexed header.
+        /// Gets the value of the field at the specified index.
         /// </summary>
-        /// <param name="index">The index of the header.</param>
+        /// <param name="index">The zero-based field index.</param>
         MemoryText this[int index] { get; }
     }
 }
