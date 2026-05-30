@@ -26,8 +26,13 @@ namespace Csv
         // Keep the fixed escape chars cached and check the separator with a separate Contains.
         // Without this caching, MemoryExtensions.IndexOfAny(ReadOnlySpan, ReadOnlySpan)/char[]
         // builds a fresh SearchValues<char> on the heap every call.
-        private static readonly SearchValues<char> FixedEscapeChars = SearchValues.Create("'\n");
+        private static readonly SearchValues<char> FixedEscapeChars = SearchValues.Create("'\n\r");
 #endif
+
+        // RFC 4180: a field must be quoted when it contains a quote, the separator, CR, or LF.
+        // The separator varies per call, so only the fixed triggers are cached here as a shared
+        // array (scanned alongside a separate separator check) to avoid a per-row char[] allocation.
+        private static readonly char[] FixedEscapeCharsArray = { '\'', '\n', '\r' };
 
         /// <summary>
         /// Writes the lines to the writer without headers. Column count is determined from the first data line.
@@ -468,7 +473,6 @@ namespace Csv
 
         private static void WriteLine(TextWriter writer, string[] data, int columnCount, char separator)
         {
-            var escapeChars = new[] { separator, '\'', '\n' };
             for (var i = 0; i < columnCount; i++)
             {
                 if (i > 0)
@@ -487,7 +491,7 @@ namespace Csv
                         escape = true;
                         cell = cell.Replace("\"", "\"\"");
                     }
-                    else if (cell.IndexOfAny(escapeChars) >= 0)
+                    else if (cell.IndexOf(separator) >= 0 || cell.IndexOfAny(FixedEscapeCharsArray) >= 0)
                         escape = true;
 
                     if (escape)
@@ -503,7 +507,6 @@ namespace Csv
 
         private static async Task WriteLineAsync(TextWriter writer, string[] data, int columnCount, char separator)
         {
-            var escapeChars = new[] { separator, '\'', '\n' };
             for (var i = 0; i < columnCount; i++)
             {
                 if (i > 0)
@@ -555,7 +558,7 @@ namespace Csv
                         // Write closing quote
                         await writer.WriteAsync('"').ConfigureAwait(false);
                     }
-                    else if (cell.IndexOfAny(escapeChars) >= 0)
+                    else if (cell.IndexOf(separator) >= 0 || cell.IndexOfAny(FixedEscapeCharsArray) >= 0)
                     {
                         await writer.WriteAsync('"').ConfigureAwait(false);
                         await writer.WriteAsync(cell).ConfigureAwait(false);

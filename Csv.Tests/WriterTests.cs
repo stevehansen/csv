@@ -45,6 +45,42 @@ namespace Csv.Tests
                 $"\"A,\",\"\"\"B\",\"C\"\"\",\"D'\"{Environment.NewLine}X,Y,Z,{Environment.NewLine}X,Y,Z,{Environment.NewLine}");
         }
 
+        [TestMethod]
+        public void EscapesFieldContainingCarriageReturn()
+        {
+            // RFC 4180: a lone CR must force quoting just like LF. Without it, "a\rb" would be
+            // written unquoted and mis-split by strict parsers. CsvBufferWriter already quoted CR;
+            // CsvWriter now matches it.
+            var result = CsvWriter.WriteToText(["A"], [["a\rb"]]);
+            Assert.AreEqual($"A{Environment.NewLine}\"a\rb\"{Environment.NewLine}", result);
+        }
+
+        [TestMethod]
+        public async Task EscapesFieldContainingCarriageReturn_Async()
+        {
+            var writer = new StringWriter();
+            await CsvWriter.WriteAsync(writer, ["A"], [["a\rb"]]);
+            Assert.AreEqual($"A{Environment.NewLine}\"a\rb\"{Environment.NewLine}", writer.ToString());
+        }
+
+#if NET8_0_OR_GREATER
+        [TestMethod]
+        public void EscapesFieldContainingCarriageReturn_MemoryPath()
+        {
+            var headers = new[] { "A".AsMemory() };
+            var rows = new[] { new[] { "a\rb".AsMemory() } };
+            Assert.AreEqual($"A{Environment.NewLine}\"a\rb\"{Environment.NewLine}", CsvWriter.WriteToText(headers, rows));
+        }
+
+        [TestMethod]
+        public void BufferWriterAndCsvWriterAgreeOnCarriageReturn()
+        {
+            using var buffer = new CsvBufferWriter();
+            buffer.WriteRow(new[] { "a\rb".AsMemory() });
+            StringAssert.Contains(buffer.ToString(), "\"a\rb\"");
+        }
+#endif
+
         //[TestMethod]
         //public void RowsNewLineEscapedValues()
         //{
