@@ -1,7 +1,6 @@
 #if NET8_0_OR_GREATER
 
 using System;
-using System.Diagnostics;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -24,58 +23,58 @@ namespace Csv.Tests
                     .ToArray())
                 .ToArray();
 
+            // Build the Memory<char> views of the input up front so input-adaptation cost is
+            // excluded from the measurement windows below (it isn't part of the writers).
+            var memoryHeaders = headers.Select(h => h.AsMemory()).ToArray();
             var memoryRows = stringRows
                 .Select(row => row.Select(cell => cell.AsMemory()).ToArray())
                 .ToArray();
 
-            // Benchmark traditional string-based writer
-            var sw = Stopwatch.StartNew();
+            // Warm up every path so first-call JIT cost doesn't land on whichever runs first
+            // and skew the comparison.
+            _ = CsvWriter.WriteToText(headers, stringRows);
+            _ = CsvWriter.WriteToText(memoryHeaders, memoryRows);
+            using (var warmup = new CsvBufferWriter())
+            {
+                warmup.WriteCsv(memoryHeaders.AsSpan(), memoryRows);
+                _ = warmup.ToString();
+            }
+
+            // Compare allocations instead of wall-clock time. GC.GetAllocatedBytesForCurrentThread()
+            // is a deterministic per-thread counter — immune to CI noise, test parallelism, and GC
+            // timing — whereas the previous Stopwatch millisecond ratios flaked because sub-5ms
+            // operations round unpredictably under load.
+            var beforeTraditional = GC.GetAllocatedBytesForCurrentThread();
             var traditionalResult = CsvWriter.WriteToText(headers, stringRows);
-            sw.Stop();
-            var traditionalTime = sw.ElapsedMilliseconds;
+            var traditionalMemory = GC.GetAllocatedBytesForCurrentThread() - beforeTraditional;
 
-            // Benchmark new memory-based writer
-            sw.Restart();
-            var memoryHeaders = headers.Select(h => h.AsMemory()).ToArray();
+            var beforeMemory = GC.GetAllocatedBytesForCurrentThread();
             var memoryResult = CsvWriter.WriteToText(memoryHeaders, memoryRows);
-            sw.Stop();
-            var memoryTime = sw.ElapsedMilliseconds;
+            var memoryAllocated = GC.GetAllocatedBytesForCurrentThread() - beforeMemory;
 
-            // Benchmark buffer writer
-            sw.Restart();
             using var bufferWriter = new CsvBufferWriter();
+            var beforeBuffer = GC.GetAllocatedBytesForCurrentThread();
             bufferWriter.WriteCsv(memoryHeaders.AsSpan(), memoryRows);
             var bufferResult = bufferWriter.ToString();
-            sw.Stop();
-            var bufferTime = sw.ElapsedMilliseconds;
+            var bufferAllocated = GC.GetAllocatedBytesForCurrentThread() - beforeBuffer;
 
-            // Verify results are equivalent
+            // All three writers must produce identical output — the load-bearing correctness
+            // check, and fully deterministic.
             Assert.AreEqual(traditionalResult, memoryResult);
             Assert.AreEqual(traditionalResult, bufferResult);
 
-            // Output performance results
-            Console.WriteLine($"Traditional Writer: {traditionalTime}ms");
-            Console.WriteLine($"Memory Writer: {memoryTime}ms ({(double)traditionalTime/memoryTime:F2}x)");
-            Console.WriteLine($"Buffer Writer: {bufferTime}ms ({(double)traditionalTime/bufferTime:F2}x)");
+            Console.WriteLine($"Traditional writer: {traditionalMemory:N0} bytes");
+            Console.WriteLine($"Memory writer:      {memoryAllocated:N0} bytes ({(double)memoryAllocated / traditionalMemory:F2}x)");
+            Console.WriteLine($"Buffer writer:      {bufferAllocated:N0} bytes ({(double)bufferAllocated / traditionalMemory:F2}x)");
             Console.WriteLine($"Output size: {traditionalResult.Length:N0} characters");
 
-            // Memory writer should be competitive, buffer writer may have overhead for small datasets
-            // For very fast operations (< 5ms), allow up to 3x variance due to CI environment noise
-            // For longer operations, require within 2x of traditional performance
-            var timeDiff = memoryTime - traditionalTime;
-            Assert.IsTrue(
-                (traditionalTime == 0 && memoryTime <= 20) ||
-                (traditionalTime < 5 && memoryTime <= traditionalTime * 3) ||
-                timeDiff < 5 ||
-                memoryTime <= traditionalTime * 2,
-                $"Memory writer should be competitive (traditional: {traditionalTime}ms, memory: {memoryTime}ms)");
-
-            // Buffer writer optimizes for large datasets, so allow more variance for small test data
-            // The benefits appear with larger datasets (10k+ rows) due to buffer management overhead
-            Assert.IsTrue(
-                (traditionalTime == 0 && bufferTime <= 20) ||
-                bufferTime <= traditionalTime * 15,
-                $"Buffer writer overhead should be reasonable (traditional: {traditionalTime}ms, buffer: {bufferTime}ms)");
+            // Deterministic competitiveness tripwire: the Memory<char> WriteToText overload should
+            // not allocate dramatically more than the string overload. The bound is generous (a
+            // regression backstop, not a fine-grained benchmark) but still catches a reintroduced
+            // per-cell allocation. The buffer writer's allocation profile is gated separately by
+            // Memory_AllocationComparison.
+            Assert.IsLessThanOrEqualTo(traditionalMemory * 2, memoryAllocated,
+                $"Memory writer allocations should be competitive with the traditional writer (traditional: {traditionalMemory:N0}, memory: {memoryAllocated:N0})");
         }
 
         [TestMethod]
@@ -90,60 +89,54 @@ namespace Csv.Tests
                 .ToArray();
 
             var csvData = CsvWriter.WriteToText(headers, rows);
+            var csvMemory = csvData.AsMemory();
 
-            // Benchmark traditional string-based reader
-            var sw = Stopwatch.StartNew();
+            // Warm up every path so first-call JIT cost doesn't land on whichever runs first
+            // and skew the comparison.
+            _ = CsvReader.ReadFromText(csvData).ToArray();
+            _ = CsvReader.ReadFromTextAsSpan(csvData).ToArray();
+            _ = CsvReader.ReadFromMemoryOptimized(csvMemory).ToArray();
+
+            // Compare allocations instead of wall-clock time (see Performance_CompareWriterMethods):
+            // GC.GetAllocatedBytesForCurrentThread() is a deterministic per-thread counter, so the
+            // comparison no longer flakes under test parallelism the way the previous Stopwatch
+            // millisecond ratios did.
+            var beforeTraditional = GC.GetAllocatedBytesForCurrentThread();
             var traditionalLines = CsvReader.ReadFromText(csvData).ToArray();
-            sw.Stop();
-            var traditionalTime = sw.ElapsedMilliseconds;
+            var traditionalMemory = GC.GetAllocatedBytesForCurrentThread() - beforeTraditional;
 
-            // Benchmark new span-based reader
-            sw.Restart();
+            var beforeSpan = GC.GetAllocatedBytesForCurrentThread();
             var spanLines = CsvReader.ReadFromTextAsSpan(csvData).ToArray();
-            sw.Stop();
-            var spanTime = sw.ElapsedMilliseconds;
+            var spanAllocated = GC.GetAllocatedBytesForCurrentThread() - beforeSpan;
 
-            // Benchmark optimized memory reader
-            sw.Restart();
-            var optimizedLines = CsvReader.ReadFromMemoryOptimized(csvData.AsMemory()).ToArray();
-            sw.Stop();
-            var optimizedTime = sw.ElapsedMilliseconds;
+            var beforeOptimized = GC.GetAllocatedBytesForCurrentThread();
+            var optimizedLines = CsvReader.ReadFromMemoryOptimized(csvMemory).ToArray();
+            var optimizedAllocated = GC.GetAllocatedBytesForCurrentThread() - beforeOptimized;
 
-            // Verify results are equivalent
+            // All three readers must parse to the same values — the load-bearing correctness
+            // check, and fully deterministic.
             Assert.HasCount(traditionalLines.Length, spanLines);
             Assert.HasCount(traditionalLines.Length, optimizedLines);
 
-            for (int i = 0; i < Math.Min(100, traditionalLines.Length); i++) // Check first 100 lines
+            for (int i = 0; i < Math.Min(100, traditionalLines.Length); i++) // Check first 100 records
             {
                 Assert.AreEqual(traditionalLines[i][0], spanLines[i].GetSpan(0).ToString());
                 Assert.AreEqual(traditionalLines[i][0], optimizedLines[i].GetSpan(0).ToString());
             }
 
-            // Output performance results
-            Console.WriteLine($"Traditional Reader: {traditionalTime}ms");
-            Console.WriteLine($"Span Reader: {spanTime}ms ({(double)traditionalTime/spanTime:F2}x)");
-            Console.WriteLine($"Optimized Reader: {optimizedTime}ms ({(double)traditionalTime/optimizedTime:F2}x)");
+            Console.WriteLine($"Traditional reader: {traditionalMemory:N0} bytes");
+            Console.WriteLine($"Span reader:        {spanAllocated:N0} bytes ({(double)spanAllocated / traditionalMemory:F2}x)");
+            Console.WriteLine($"Optimized reader:   {optimizedAllocated:N0} bytes ({(double)optimizedAllocated / traditionalMemory:F2}x)");
             Console.WriteLine($"Processed {traditionalLines.Length:N0} rows");
 
-            // Span/optimized reader should be faster or at least comparable
-            // For very fast operations (< 5ms), allow up to 10x variance due to CI environment noise and JIT warmup
-            // For longer operations, require within 2x of traditional performance
-            var spanTimeDiff = spanTime - traditionalTime;
-            var optimizedTimeDiff = optimizedTime - traditionalTime;
-
-            Assert.IsTrue(
-                (traditionalTime == 0 && spanTime <= 20) ||
-                (traditionalTime < 5 && spanTime <= traditionalTime * 10) ||
-                spanTimeDiff < 5 ||
-                spanTime <= traditionalTime * 2,
-                $"Span reader should be competitive (traditional: {traditionalTime}ms, span: {spanTime}ms)");
-
-            Assert.IsTrue(
-                (traditionalTime == 0 && optimizedTime <= 20) ||
-                (traditionalTime < 5 && optimizedTime <= traditionalTime * 10) ||
-                optimizedTimeDiff < 5 ||
-                optimizedTime <= traditionalTime * 2,
-                $"Optimized reader should be competitive (traditional: {traditionalTime}ms, optimized: {optimizedTime}ms)");
+            // Deterministic competitiveness tripwire: the span and optimized readers exist to avoid
+            // the per-field string copies the traditional reader makes, so neither should allocate
+            // dramatically more than the traditional path. The bound is a generous regression
+            // backstop, not a fine-grained benchmark.
+            Assert.IsLessThanOrEqualTo(traditionalMemory * 2, spanAllocated,
+                $"Span reader allocations should be competitive with the traditional reader (traditional: {traditionalMemory:N0}, span: {spanAllocated:N0})");
+            Assert.IsLessThanOrEqualTo(traditionalMemory * 2, optimizedAllocated,
+                $"Optimized reader allocations should be competitive with the traditional reader (traditional: {traditionalMemory:N0}, optimized: {optimizedAllocated:N0})");
         }
 
         [TestMethod]
