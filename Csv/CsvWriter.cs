@@ -23,16 +23,16 @@ namespace Csv
     {
 #if NET8_0_OR_GREATER
         // The separator is per-call so it can't be baked into a single cached SearchValues.
-        // Keep the fixed escape chars cached and check the separator with a separate Contains.
+        // Keep the fixed quote-trigger chars cached and check the separator with a separate Contains.
         // Without this caching, MemoryExtensions.IndexOfAny(ReadOnlySpan, ReadOnlySpan)/char[]
         // builds a fresh SearchValues<char> on the heap every call.
-        private static readonly SearchValues<char> FixedEscapeChars = SearchValues.Create("'\n\r");
+        private static readonly SearchValues<char> QuoteTriggerChars = SearchValues.Create("'\n\r");
 #else
         // RFC 4180: a field must be quoted when it contains a quote, the separator, CR, or LF.
         // Kept as a shared array (scanned alongside a separate separator check) so WriteLine
         // doesn't allocate a per-row char[] on the netstandard2.0 path. NET8+ uses the
         // vectorized SearchValues above instead.
-        private static readonly char[] FixedEscapeCharsArray = { '\'', '\n', '\r' };
+        private static readonly char[] QuoteTriggerCharsArray = { '\'', '\n', '\r' };
 #endif
 
         /// <summary>
@@ -481,7 +481,7 @@ namespace Csv
 
                 if (i < data.Length)
                 {
-                    var escape = false;
+                    var mustQuote = false;
                     var cell = data[i] ?? string.Empty;
 #if NET8_0_OR_GREATER
                     if (cell.Contains('"'))
@@ -489,20 +489,20 @@ namespace Csv
                     if (cell.Contains("\""))
 #endif
                     {
-                        escape = true;
+                        mustQuote = true;
                         cell = cell.Replace("\"", "\"\"");
                     }
 #if NET8_0_OR_GREATER
-                    else if (cell.Contains(separator) || cell.AsSpan().IndexOfAny(FixedEscapeChars) >= 0)
+                    else if (cell.Contains(separator) || cell.AsSpan().IndexOfAny(QuoteTriggerChars) >= 0)
 #else
-                    else if (cell.IndexOf(separator) >= 0 || cell.IndexOfAny(FixedEscapeCharsArray) >= 0)
+                    else if (cell.IndexOf(separator) >= 0 || cell.IndexOfAny(QuoteTriggerCharsArray) >= 0)
 #endif
-                        escape = true;
+                        mustQuote = true;
 
-                    if (escape)
+                    if (mustQuote)
                         writer.Write('"');
                     writer.Write(cell);
-                    if (escape)
+                    if (mustQuote)
                         writer.Write('"');
                 }
             }
@@ -564,9 +564,9 @@ namespace Csv
                         await writer.WriteAsync('"').ConfigureAwait(false);
                     }
 #if NET8_0_OR_GREATER
-                    else if (cell.Contains(separator) || cell.AsSpan().IndexOfAny(FixedEscapeChars) >= 0)
+                    else if (cell.Contains(separator) || cell.AsSpan().IndexOfAny(QuoteTriggerChars) >= 0)
 #else
-                    else if (cell.IndexOf(separator) >= 0 || cell.IndexOfAny(FixedEscapeCharsArray) >= 0)
+                    else if (cell.IndexOf(separator) >= 0 || cell.IndexOfAny(QuoteTriggerCharsArray) >= 0)
 #endif
                     {
                         await writer.WriteAsync('"').ConfigureAwait(false);
@@ -637,7 +637,7 @@ namespace Csv
 
                 writer.Write('"');
             }
-            else if (cell.Contains(separator) || cell.IndexOfAny(FixedEscapeChars) >= 0)
+            else if (cell.Contains(separator) || cell.IndexOfAny(QuoteTriggerChars) >= 0)
             {
                 writer.Write('"');
                 writer.Write(cell);
@@ -685,10 +685,10 @@ namespace Csv
             var pos = 0;
 
             var needsQuoteEscape = cell.Contains('"');
-            var needsGeneralEscape = cell.Contains(separator) || cell.IndexOfAny(FixedEscapeChars) >= 0;
-            var escape = needsQuoteEscape || needsGeneralEscape;
+            var needsQuoting = cell.Contains(separator) || cell.IndexOfAny(QuoteTriggerChars) >= 0;
+            var mustQuote = needsQuoteEscape || needsQuoting;
 
-            if (escape)
+            if (mustQuote)
             {
                 if (pos >= buffer.Length) return false;
                 buffer[pos++] = '"';
@@ -720,7 +720,7 @@ namespace Csv
                 pos += cell.Length;
             }
 
-            if (escape)
+            if (mustQuote)
             {
                 if (pos >= buffer.Length) return false;
                 buffer[pos++] = '"';
