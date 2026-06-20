@@ -186,15 +186,11 @@ namespace Csv
         }
 #endif
 
-        internal readonly struct StringRowFactory : IRowFactory<ReadLine>
+        internal readonly struct StringRowFactory : IRowFactory<CsvLine<DefaultTrimSplit>>
         {
-            public ReadLine Create(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, string? rawString, IList<MemoryText>? rawSplit, CsvOptions options)
+            public CsvLine<DefaultTrimSplit> Create(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, string? rawString, IList<MemoryText>? rawSplit, CsvOptions options)
             {
-#if NET8_0_OR_GREATER
-                var row = new ReadLine(headers, headerLookup, index, rawString ?? raw.ToString(), options);
-#else
-                var row = new ReadLine(headers, headerLookup, index, rawString ?? raw, options);
-#endif
+                var row = new CsvLine<DefaultTrimSplit>(headers, headerLookup, index, raw, rawString, options);
                 if (rawSplit != null)
                     row.rawFields = rawSplit;
                 return row;
@@ -202,18 +198,18 @@ namespace Csv
         }
 
 #if NET8_0_OR_GREATER
-        internal readonly struct SpanRowFactory : IRowFactory<ReadLineSpan>
+        internal readonly struct SpanRowFactory : IRowFactory<CsvLine<DefaultTrimSplit>>
         {
-            public ReadLineSpan Create(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, string? rawString, IList<MemoryText>? rawSplit, CsvOptions options)
+            public CsvLine<DefaultTrimSplit> Create(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, string? rawString, IList<MemoryText>? rawSplit, CsvOptions options)
             {
-                var row = new ReadLineSpan(headers, headerLookup, index, rawString ?? raw.ToString(), options);
+                var row = new CsvLine<DefaultTrimSplit>(headers, headerLookup, index, raw, rawString, options);
                 if (rawSplit != null)
                     row.rawFields = rawSplit;
                 return row;
             }
         }
 
-        internal readonly struct OptimizedRowFactory : IRowFactory<ReadLineSpanOptimized>
+        internal readonly struct OptimizedRowFactory : IRowFactory<CsvLine<OptimizedTrimSplit>>
         {
             private readonly CsvMemoryOptions memoryOptions;
 
@@ -222,20 +218,20 @@ namespace Csv
                 this.memoryOptions = memoryOptions;
             }
 
-            public ReadLineSpanOptimized Create(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, string? rawString, IList<MemoryText>? rawSplit, CsvOptions options)
+            public CsvLine<OptimizedTrimSplit> Create(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, string? rawString, IList<MemoryText>? rawSplit, CsvOptions options)
             {
-                var row = new ReadLineSpanOptimized(headers, headerLookup, index, raw, options, memoryOptions);
+                var row = new CsvLine<OptimizedTrimSplit>(headers, headerLookup, index, raw, rawString, options, new OptimizedTrimSplit(memoryOptions));
                 if (rawSplit != null)
                     row.rawFields = rawSplit;
                 return row;
             }
         }
 
-        internal readonly struct MemoryRowFactory : IRowFactory<ReadLineFromMemory>
+        internal readonly struct MemoryRowFactory : IRowFactory<CsvLine<DefaultTrimSplit>>
         {
-            public ReadLineFromMemory Create(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, string? rawString, IList<MemoryText>? rawSplit, CsvOptions options)
+            public CsvLine<DefaultTrimSplit> Create(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, string? rawString, IList<MemoryText>? rawSplit, CsvOptions options)
             {
-                var row = new ReadLineFromMemory(headers, headerLookup, index, raw, options);
+                var row = new CsvLine<DefaultTrimSplit>(headers, headerLookup, index, raw, rawString, options);
                 if (rawSplit != null)
                     row.rawFields = rawSplit;
                 return row;
