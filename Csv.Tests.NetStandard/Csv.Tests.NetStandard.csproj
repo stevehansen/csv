@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Exercises the netstandard2.0 BUILD of Csv against a real runtime.
+
+    netstandard2.0 is a compatibility surface, not a runnable framework, so this project
+    targets .NET Framework 4.8: net48 is compatible with netstandard2.0 but NOT with
+    net8.0/net9.0, so the Csv project reference resolves to the netstandard2.0 asset
+    (the same resolution the review probe relied on). This is the only place tests run
+    against the ns2.0 path - where the MemoryText type alias is `string` and the
+    ReturnEmptyForMissingColumn "" vs null contract lives. The main Csv.Tests project
+    (net9.0) covers the net8+ Span/Memory surface.
+
+    LangVersion is pinned to latest because the SDK otherwise defaults net48 to C# 7.3.
+  -->
+  <PropertyGroup>
+    <AssemblyTitle>Csv.Tests.NetStandard</AssemblyTitle>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Csv\Csv.csproj" />
+  </ItemGroup>
+
+  <!--
+    Reuse the refactor's own boundary tests instead of duplicating them. Under net48 the
+    #if NET8_0_OR_GREATER guards exclude the Span/Memory cases, leaving the string-path
+    FIX 1/2/3 tests (incl. the missing-column null trap) to run against the ns2.0 build.
+  -->
+  <ItemGroup>
+    <Compile Include="..\Csv.Tests\RowUnificationTests.cs" Link="RowUnificationTests.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.5.1" />
+    <PackageReference Include="MSTest.TestFramework" Version="4.2.3" />
+    <PackageReference Include="MSTest.TestAdapter" Version="4.2.3" />
+  </ItemGroup>
+
+</Project>
