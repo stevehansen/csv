@@ -124,3 +124,32 @@ The library supports CSV fields that span multiple lines when enclosed in quotes
 - Use descriptive names like `Feature-Name-PRD.md`
 - Include implementation documents alongside PRDs when available
 - Examples: `Span-Memory-PRD.md`, `Regex-Elimination-Enhancement-PRD.md`
+
+## Security Documentation
+
+### STRIDE.md Threat Model
+
+This repository includes a STRIDE threat model (`STRIDE.md`) for security analysis.
+
+**When to update STRIDE.md:**
+- Adding new authentication/authorization mechanisms
+- Changing data storage, encryption, or secrets handling
+- Adding new external integrations or API endpoints
+- Modifying trust boundaries (new external connections, database access)
+- After security incidents or penetration test findings
+- When addressing security recommendations from the document
+- **When a change mitigates or resolves an existing finding** — move it to Mitigated/Resolved (update the mitigation text, score/status, and risk-summary row)
+
+**Updates are bidirectional and ride in the same PR.** Whether a change *introduces/surfaces* a threat or *mitigates/resolves* one, the matching `STRIDE.md` edit ships in the **same PR** as the code/config change — never as a follow-up. A fix that closes a tracked finding is not done until `STRIDE.md` (and the linked issue's status) reflects it. Treat a security-relevant diff with no STRIDE.md change as incomplete.
+
+**How to update:**
+1. Add new threats to the relevant STRIDE category (Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege)
+2. Assess likelihood (Very Low → High) and impact (Low → Critical)
+3. Document existing mitigations or add recommendations
+4. Link GitHub issues for unresolved findings
+5. Update the Review History table
+6. Update version if using frontmatter
+
+**Tracking critical findings:**
+- Critical/High risk findings should have a linked GitHub issue with `security` label
+- Review STRIDE.md annually or after major releases
