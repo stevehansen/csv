@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -823,6 +824,134 @@ namespace Csv.Tests
             Assert.HasCount(sync.Length, asyncLines);
             for (var i = 0; i < sync.Length; i++)
                 CollectionAssert.AreEqual(sync[i].Values, asyncLines[i].Values);
+        }
+
+        [TestMethod]
+        public async Task ReadAsync_WithPreCanceledToken_ThrowsOperationCanceledException()
+        {
+            const string csv = "A,B\n1,2\n3,4";
+            using var reader = new StringReader(csv);
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            {
+                await foreach (var _ in CsvReader.ReadAsync(reader, cts.Token))
+                {
+                }
+            });
+        }
+
+        [TestMethod]
+        public async Task ReadAsync_WithCancellationMidway_CancelsEnumeration()
+        {
+            const string csv = "A,B\n1,2\n3,4\n5,6";
+            using var reader = new StringReader(csv);
+            using var cts = new CancellationTokenSource();
+
+            var count = 0;
+            await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            {
+                await foreach (var _ in CsvReader.ReadAsync(reader, cts.Token))
+                {
+                    count++;
+                    cts.Cancel();
+                }
+            });
+
+            Assert.AreEqual(1, count);
+        }
+
+        [TestMethod]
+        public async Task ReadFromStreamAsync_WithCancellationToken_CancelsEnumeration()
+        {
+            const string csv = "A,B\n1,2\n3,4\n5,6";
+            using var cts = new CancellationTokenSource();
+
+            var count = 0;
+            await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            {
+                using var stream = new MemoryStream(Encoding.UTF8.GetBytes(csv));
+                await foreach (var _ in CsvReader.ReadFromStreamAsync(stream, cts.Token))
+                {
+                    count++;
+                    cts.Cancel();
+                }
+            });
+
+            Assert.AreEqual(1, count);
+        }
+
+        [TestMethod]
+        public async Task ReadFromStreamAsync_WithWithCancellation_CancelsEnumeration()
+        {
+            const string csv = "A,B\n1,2\n3,4\n5,6";
+            using var cts = new CancellationTokenSource();
+
+            var count = 0;
+            await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            {
+                using var stream = new MemoryStream(Encoding.UTF8.GetBytes(csv));
+                await foreach (var _ in CsvReader.ReadFromStreamAsync(stream).WithCancellation(cts.Token))
+                {
+                    count++;
+                    cts.Cancel();
+                }
+            });
+
+            Assert.AreEqual(1, count);
+        }
+
+        [TestMethod]
+        public async Task ReadFromTextAsync_WithCancellationToken_CancelsEnumeration()
+        {
+            const string csv = "A,B\n1,2\n3,4\n5,6";
+            using var cts = new CancellationTokenSource();
+
+            var count = 0;
+            await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            {
+                await foreach (var _ in CsvReader.ReadFromTextAsync(csv, cts.Token))
+                {
+                    count++;
+                    cts.Cancel();
+                }
+            });
+
+            Assert.AreEqual(1, count);
+        }
+
+        [TestMethod]
+        public async Task ReadFromTextAsync_WithWithCancellation_CancelsEnumeration()
+        {
+            const string csv = "A,B\n1,2\n3,4\n5,6";
+            using var cts = new CancellationTokenSource();
+
+            var count = 0;
+            await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            {
+                await foreach (var _ in CsvReader.ReadFromTextAsync(csv).WithCancellation(cts.Token))
+                {
+                    count++;
+                    cts.Cancel();
+                }
+            });
+
+            Assert.AreEqual(1, count);
+        }
+
+        [TestMethod]
+        public async Task ReadAsync_OverloadWithoutOptions_WorksAsExpected()
+        {
+            const string csv = "A,B\n1,2\n3,4";
+            using var reader = new StringReader(csv);
+            var lines = new List<ICsvLine>();
+            await foreach (var line in CsvReader.ReadAsync(reader, CancellationToken.None))
+                lines.Add(line);
+
+            Assert.AreEqual(2, lines.Count);
+            Assert.AreEqual("1", lines[0]["A"]);
+            Assert.AreEqual("4", lines[1]["B"]);
         }
 
         [TestMethod]
