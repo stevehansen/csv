@@ -4,6 +4,9 @@ using System.IO;
 using System.Linq;
 
 #if NET8_0_OR_GREATER
+using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
 using MemoryText = System.ReadOnlyMemory<char>;
 using SpanText = System.ReadOnlySpan<char>;
 #else
@@ -190,11 +193,28 @@ namespace Csv
         /// <param name="reader">The text reader to read the data from.</param>
         /// <param name="options">The optional options to use when reading.</param>
         public static IAsyncEnumerable<ICsvLine> ReadAsync(TextReader reader, CsvOptions? options = null)
+            => ReadAsync(reader, options, default);
+
+        /// <summary>
+        /// Reads the records from the reader.
+        /// </summary>
+        /// <param name="reader">The text reader to read the data from.</param>
+        /// <param name="cancellationToken">The cancellation token to use.</param>
+        public static IAsyncEnumerable<ICsvLine> ReadAsync(TextReader reader, CancellationToken cancellationToken)
+            => ReadAsync(reader, null, cancellationToken);
+
+        /// <summary>
+        /// Reads the records from the reader.
+        /// </summary>
+        /// <param name="reader">The text reader to read the data from.</param>
+        /// <param name="options">The optional options to use when reading.</param>
+        /// <param name="cancellationToken">The cancellation token to use.</param>
+        public static IAsyncEnumerable<ICsvLine> ReadAsync(TextReader reader, CsvOptions? options, CancellationToken cancellationToken)
         {
             if (reader == null)
                 throw new ArgumentNullException(nameof(reader));
 
-            return ReadImplAsync(reader, options);
+            return ReadImplAsync(reader, options, cancellationToken);
         }
 
         /// <summary>
@@ -203,18 +223,35 @@ namespace Csv
         /// <param name="stream">The stream to read the data from.</param>
         /// <param name="options">The optional options to use when reading.</param>
         public static IAsyncEnumerable<ICsvLine> ReadFromStreamAsync(Stream stream, CsvOptions? options = null)
+            => ReadFromStreamAsync(stream, options, default);
+
+        /// <summary>
+        /// Reads the records from the stream.
+        /// </summary>
+        /// <param name="stream">The stream to read the data from.</param>
+        /// <param name="cancellationToken">The cancellation token to use.</param>
+        public static IAsyncEnumerable<ICsvLine> ReadFromStreamAsync(Stream stream, CancellationToken cancellationToken)
+            => ReadFromStreamAsync(stream, null, cancellationToken);
+
+        /// <summary>
+        /// Reads the records from the stream.
+        /// </summary>
+        /// <param name="stream">The stream to read the data from.</param>
+        /// <param name="options">The optional options to use when reading.</param>
+        /// <param name="cancellationToken">The cancellation token to use.</param>
+        public static IAsyncEnumerable<ICsvLine> ReadFromStreamAsync(Stream stream, CsvOptions? options, CancellationToken cancellationToken)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
 
-            static async IAsyncEnumerable<ICsvLine> Impl(Stream stream, CsvOptions? options)
-            {
-                using var reader = new StreamReader(stream);
-                await foreach (var line in ReadImplAsync(reader, options))
-                    yield return line;
-            }
+            return ReadFromStreamAsyncImpl(stream, options, cancellationToken);
+        }
 
-            return Impl(stream, options);
+        private static async IAsyncEnumerable<ICsvLine> ReadFromStreamAsyncImpl(Stream stream, CsvOptions? options, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            using var reader = new StreamReader(stream);
+            await foreach (var line in ReadImplAsync(reader, options, cancellationToken).ConfigureAwait(false))
+                yield return line;
         }
 
         /// <summary>
@@ -223,22 +260,39 @@ namespace Csv
         /// <param name="csv">The csv string to read the data from.</param>
         /// <param name="options">The optional options to use when reading.</param>
         public static IAsyncEnumerable<ICsvLine> ReadFromTextAsync(string csv, CsvOptions? options = null)
+            => ReadFromTextAsync(csv, options, default);
+
+        /// <summary>
+        /// Reads the records from the csv string.
+        /// </summary>
+        /// <param name="csv">The csv string to read the data from.</param>
+        /// <param name="cancellationToken">The cancellation token to use.</param>
+        public static IAsyncEnumerable<ICsvLine> ReadFromTextAsync(string csv, CancellationToken cancellationToken)
+            => ReadFromTextAsync(csv, null, cancellationToken);
+
+        /// <summary>
+        /// Reads the records from the csv string.
+        /// </summary>
+        /// <param name="csv">The csv string to read the data from.</param>
+        /// <param name="options">The optional options to use when reading.</param>
+        /// <param name="cancellationToken">The cancellation token to use.</param>
+        public static IAsyncEnumerable<ICsvLine> ReadFromTextAsync(string csv, CsvOptions? options, CancellationToken cancellationToken)
         {
             if (csv == null)
                 throw new ArgumentNullException(nameof(csv));
 
-            static async IAsyncEnumerable<ICsvLine> Impl(string csv, CsvOptions? options)
-            {
-                using var reader = new StringReader(csv);
-                await foreach (var line in ReadImplAsync(reader, options))
-                    yield return line;
-            }
-
-            return Impl(csv, options);
+            return ReadFromTextAsyncImpl(csv, options, cancellationToken);
         }
 
-        private static IAsyncEnumerable<ICsvLine> ReadImplAsync(TextReader reader, CsvOptions? options)
-            => EnumerateAsync<AsyncTextReaderLineSource, StringRowFactory, CsvLine<DefaultTrimSplit>>(new AsyncTextReaderLineSource(reader), default, options ?? new CsvOptions());
+        private static async IAsyncEnumerable<ICsvLine> ReadFromTextAsyncImpl(string csv, CsvOptions? options, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            using var reader = new StringReader(csv);
+            await foreach (var line in ReadImplAsync(reader, options, cancellationToken).ConfigureAwait(false))
+                yield return line;
+        }
+
+        private static IAsyncEnumerable<ICsvLine> ReadImplAsync(TextReader reader, CsvOptions? options, CancellationToken cancellationToken = default)
+            => EnumerateAsync<AsyncTextReaderLineSource, StringRowFactory, CsvLine<DefaultTrimSplit>>(new AsyncTextReaderLineSource(reader), default, options ?? new CsvOptions(), cancellationToken);
 #endif
 
         private static char AutoDetectSeparator(SpanText sampleLine)

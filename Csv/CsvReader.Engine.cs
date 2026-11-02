@@ -353,6 +353,7 @@ namespace Csv
 
             while (true)
             {
+                ct.ThrowIfCancellationRequested();
                 var (ok, line, lineString) = await source.TryReadLineAsync(ct).ConfigureAwait(false);
                 if (!ok)
                     break;
