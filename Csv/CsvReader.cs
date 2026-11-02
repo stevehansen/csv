@@ -110,14 +110,9 @@ namespace Csv
             }
         }
 
+        // Slicing the string avoids the per-line string StringReader.ReadLine would allocate; line breaks are handled identically
         private static IEnumerable<ICsvLineSpan> ReadFromTextSpanImpl(string csv, CsvOptions? options)
-        {
-            using (var reader = new StringReader(csv))
-            {
-                foreach (var line in ReadSpanImpl(reader, options))
-                    yield return line;
-            }
-        }
+            => Enumerate<MemorySliceLineSource, SpanRowFactory, CsvLine<DefaultTrimSplit>>(new MemorySliceLineSource(csv.AsMemory()), default, options ?? new CsvOptions());
 
         private static IEnumerable<ICsvLineSpan> ReadSpanImpl(TextReader reader, CsvOptions? options)
             => Enumerate<TextReaderLineSource, SpanRowFactory, CsvLine<DefaultTrimSplit>>(new TextReaderLineSource(reader), default, options ?? new CsvOptions());
@@ -174,6 +169,10 @@ namespace Csv
             }
         }
 
+#if NET8_0_OR_GREATER
+        private static IEnumerable<ICsvLine> ReadFromTextImpl(string csv, CsvOptions? options)
+            => Enumerate<MemorySliceLineSource, StringRowFactory, CsvLine<DefaultTrimSplit>>(new MemorySliceLineSource(csv.AsMemory()), default, options ?? new CsvOptions());
+#else
         private static IEnumerable<ICsvLine> ReadFromTextImpl(string csv, CsvOptions? options)
         {
             using (var reader = new StringReader(csv))
@@ -182,6 +181,7 @@ namespace Csv
                     yield return line;
             }
         }
+#endif
 
         private static IEnumerable<ICsvLine> ReadImpl(TextReader reader, CsvOptions? options)
             => Enumerate<TextReaderLineSource, StringRowFactory, CsvLine<DefaultTrimSplit>>(new TextReaderLineSource(reader), default, options ?? new CsvOptions());
@@ -310,7 +310,7 @@ namespace Csv
 
         private static MemoryText[] CreateDefaultHeaders(MemoryText line, CsvOptions options)
         {
-            var columnCount = options.Splitter.Split(line, options).Count;
+            var columnCount = options.Splitter.Split(line, options).Length;
 
             var headers = new MemoryText[columnCount];
             for (var i = 0; i < headers.Length; i++)
@@ -392,15 +392,15 @@ namespace Csv
             options.Splitter = CsvLineSplitter.Get(options);
         }
 
-        private static IList<MemoryText> SplitLine(MemoryText line, CsvOptions options, int? capacity = null)
+        private static MemoryText[] SplitLine(MemoryText line, CsvOptions options, int? capacity = null)
         {
             return options.Splitter.Split(line, options, capacity);
         }
 
-        private static MemoryText[] Trim(IList<MemoryText> line, CsvOptions options)
+        private static MemoryText[] Trim(MemoryText[] line, CsvOptions options)
         {
-            var trimmed = new MemoryText[line.Count]; // TODO: Mutate existing array?
-            for (var i = 0; i < line.Count; i++)
+            var trimmed = line; // split results are owned by the caller, so trim in place
+            for (var i = 0; i < line.Length; i++)
             {
                 var str = line[i];
                 if (options.TrimData)
@@ -505,14 +505,14 @@ namespace Csv
         }
         internal interface ITrimSplit
         {
-            IList<MemoryText> Split(MemoryText raw, CsvOptions options, int? capacity);
-            MemoryText[] Trim(IList<MemoryText> fields, CsvOptions options);
+            MemoryText[] Split(MemoryText raw, CsvOptions options, int? capacity);
+            MemoryText[] Trim(MemoryText[] fields, CsvOptions options);
         }
 
         internal readonly struct DefaultTrimSplit : ITrimSplit
         {
-            public IList<MemoryText> Split(MemoryText raw, CsvOptions o, int? cap) => SplitLine(raw, o, cap);
-            public MemoryText[] Trim(IList<MemoryText> f, CsvOptions o) => CsvReader.Trim(f, o);
+            public MemoryText[] Split(MemoryText raw, CsvOptions o, int? cap) => SplitLine(raw, o, cap);
+            public MemoryText[] Trim(MemoryText[] f, CsvOptions o) => CsvReader.Trim(f, o);
         }
 
 #if NET8_0_OR_GREATER
@@ -520,8 +520,8 @@ namespace Csv
         {
             private readonly CsvMemoryOptions mem;
             public OptimizedTrimSplit(CsvMemoryOptions mem) => this.mem = mem;
-            public IList<MemoryText> Split(MemoryText raw, CsvOptions o, int? cap) => SplitLineOptimized(raw, o, mem, cap);
-            public MemoryText[] Trim(IList<MemoryText> f, CsvOptions o) => TrimOptimized(f, o, mem);
+            public MemoryText[] Split(MemoryText raw, CsvOptions o, int? cap) => SplitLineOptimized(raw, o, mem, cap);
+            public MemoryText[] Trim(MemoryText[] f, CsvOptions o) => TrimOptimized(f, o, mem);
         }
 #endif
 
@@ -540,8 +540,8 @@ namespace Csv
             private readonly TPolicy policy;
             private readonly MemoryText[] headers;
             private readonly MemoryText rawMemory;
-            private readonly string? rawString;
-            internal IList<MemoryText>? rawFields;
+            private string? rawString;
+            internal MemoryText[]? rawFields; // trimmed in place once ParsedValues is computed; only its Length is reliable afterwards
             internal MemoryText[]? parsedValues;
 
             private static readonly MemoryText Empty = "".AsMemory();
@@ -560,21 +560,29 @@ namespace Csv
 
             public int Index { get; }
 
-            public string Raw => rawString ?? rawMemory.ToString();
+            public string Raw => rawString ??= rawMemory.ToString();
 
             public int ColumnCount => ParsedValues.Length;
 
             public bool HasColumn(string name) => headerLookup.ContainsKey(name);
 
             public bool LineHasColumn(string name)
-                => headerLookup.TryGetValue(name, out var i) && RawFields.Count > i;
+                => headerLookup.TryGetValue(name, out var i) && RawFields.Length > i;
 
-            public string[] Headers => headers.Select(h => h.AsString()).ToArray();
+            public string[] Headers => ToStrings(headers);
 
-            public string[] Values => ParsedValues.Select(v => v.AsString()).ToArray();
+            public string[] Values => ToStrings(ParsedValues);
+
+            private static string[] ToStrings(MemoryText[] values)
+            {
+                var result = new string[values.Length];
+                for (var i = 0; i < values.Length; i++)
+                    result[i] = values[i].AsString();
+                return result;
+            }
 
             // headers.Length is a results-neutral presize hint for the field list; the split is identical without it.
-            internal IList<MemoryText> RawFields => rawFields ??= policy.Split(rawMemory, options, headers.Length);
+            internal MemoryText[] RawFields => rawFields ??= policy.Split(rawMemory, options, headers.Length);
 
             private MemoryText[] ParsedValues
             {
@@ -584,10 +592,15 @@ namespace Csv
                     {
                         var raw = RawFields;
 
-                        if (options.ValidateColumnCount && raw.Count != headers.Length)
-                            throw new InvalidOperationException($"Expected {headers.Length}, got {raw.Count} columns.");
+                        if (options.ValidateColumnCount && raw.Length != headers.Length)
+                            throw new InvalidOperationException($"Expected {headers.Length}, got {raw.Length} columns.");
 
-                        parsedValues = policy.Trim(raw, options);
+                        // Trim mutates raw in place, so concurrent readers of one row must not trim (unescape) it twice
+                        lock (raw)
+                        {
+                            if (parsedValues == null)
+                                parsedValues = policy.Trim(raw, options);
+                        }
                     }
 
                     return parsedValues;
@@ -693,17 +706,17 @@ namespace Csv
 
 #if NET8_0_OR_GREATER
 
-        private static IList<ReadOnlyMemory<char>> SplitLineOptimized(ReadOnlyMemory<char> line, CsvOptions options, CsvMemoryOptions memoryOptions, int? capacity = null)
+        private static ReadOnlyMemory<char>[] SplitLineOptimized(ReadOnlyMemory<char> line, CsvOptions options, CsvMemoryOptions memoryOptions, int? capacity = null)
         {
             var splitter = options.Splitter ?? CsvLineSplitter.Get(options);
             return splitter.Split(line, options, capacity);
         }
 
-        private static ReadOnlyMemory<char>[] TrimOptimized(IList<ReadOnlyMemory<char>> line, CsvOptions options, CsvMemoryOptions memoryOptions)
+        private static ReadOnlyMemory<char>[] TrimOptimized(ReadOnlyMemory<char>[] line, CsvOptions options, CsvMemoryOptions memoryOptions)
         {
-            var trimmed = new ReadOnlyMemory<char>[line.Count];
+            var trimmed = line; // split results are owned by the caller, so trim in place
 
-            for (var i = 0; i < line.Count; i++)
+            for (var i = 0; i < line.Length; i++)
             {
                 var str = line[i];
 
