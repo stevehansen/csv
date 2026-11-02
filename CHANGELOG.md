@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Breaking**: target frameworks are now `netstandard2.0` and `net10.0` (dropped `net8.0` and `net9.0`)
+  - .NET 8/9 apps now resolve the `netstandard2.0` build, which lacks the Span/Memory APIs (`ReadAsSpan`, `ReadFromMemoryOptimized`, `CsvBufferWriter`, ...)
+- Removed the stale `NetStandardImplicitPackageVersion` 1.6.0 pin; it broke the `netstandard2.0` build once NuGet package pruning kicked in for `net10.0`
+
 ### Fixed
 - ReadFromStreamAsync and ReadFromTextAsync dropping cancellation tokens when consumed with .WithCancellation(ct)
   - Async enumerator implementations now carry [EnumeratorCancellation] and forward tokens to the underlying reader engine
@@ -16,12 +21,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Performance
 - Removed a per-row `char[]` allocation in `CsvWriter.WriteLine`/`WriteLineAsync` by caching the fixed quote-trigger characters in a static array and checking the variable separator separately
-- Reader: 40–55% fewer bytes allocated and 10–35% faster on net8.0+
+- Reader: 40–55% fewer bytes allocated and 10–35% faster on net10.0
   - Line splitting jumps between separators/quotes with vectorized `IndexOfAny` and returns an exact-size array instead of a `List`
   - Field trimming/unquoting reuses the split array instead of copying it
   - Escaped quotes are unescaped in one pass with a single allocation (was one allocation per escape)
   - `ReadFromText`/`ReadFromTextAsSpan` slice the input string instead of allocating a string per line; `Raw` is materialized on first access and cached
-- Writer: quoted fields containing `"` are written in segments instead of via `string.Replace` / per-char writes on net8.0+
+- Writer: quoted fields containing `"` are written in segments instead of via `string.Replace` / per-char writes on net10.0
 
 ## [2.0.245] - 2026-05-17
 

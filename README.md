@@ -7,7 +7,7 @@
 
 Really simple csv library
 
-This library targets .NET Standard 2.0, .NET 8.0, and .NET 9.0, with enhanced Span/Memory APIs available for .NET 8.0+.
+This library targets .NET Standard 2.0 and .NET 10.0, with enhanced Span/Memory APIs available for .NET 10.0+.
 
 ## Install
 
@@ -44,13 +44,13 @@ foreach (var line in CsvReader.ReadFromText(csv))
 
 `CsvReader` also supports reading from a `TextReader` (`CsvReader.Read(TextReader, CsvOptions)`) or a `Stream` (`CsvReader.ReadFromStream(Stream, CsvOptions)`)
 
-For .NET 8.0+ the library exposes:
+For .NET 10.0+ the library exposes:
 - `CsvReader.ReadAsync` and `CsvReader.ReadFromStreamAsync` which return `IAsyncEnumerable<ICsvLine>`
 - `CsvReader.ReadFromMemory` to read from a `ReadOnlyMemory<char>` without allocating intermediate strings
 - `CsvReader.ReadAsSpan`, `CsvReader.ReadFromStreamAsSpan`, and `CsvReader.ReadFromTextAsSpan` which return `IEnumerable<ICsvLineSpan>` for zero-allocation Span/Memory access to CSV data
 - `CsvReader.ReadFromMemoryOptimized` with `CsvMemoryOptions` for high-performance scenarios using ArrayPool-based buffering
 
-#### High-performance reading with Span/Memory (.NET 8.0+)
+#### High-performance reading with Span/Memory (.NET 10.0+)
 
 ```csharp
 var csv = File.ReadAllText("sample.csv");
@@ -153,7 +153,7 @@ var csv = CsvWriter.WriteToText(rows, ';'); // semicolon separator
 
 `CsvWriter` also includes asynchronous overloads (`WriteAsync` and
 `WriteToTextAsync`) which operate on `IAsyncEnumerable<string[]>` and support
-passing a `CancellationToken`. For .NET 8.0+, memory-efficient overloads using
+passing a `CancellationToken`. For .NET 10.0+, memory-efficient overloads using
 `ReadOnlyMemory<char>` are available.
 
 ### Helper extensions

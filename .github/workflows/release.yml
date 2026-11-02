@@ -6,7 +6,7 @@ on:
 
 jobs:
   publish:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write # NuGet trusted publishing
@@ -16,7 +16,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: '9.0.x'
+        dotnet-version: '10.0.x'
 
     # The tag is the package version: v2.0.246 publishes 2.0.246
     - name: Version from tag
@@ -24,10 +24,11 @@ jobs:
       run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
 
     - name: Build
-      run: dotnet build Csv.sln --configuration Release -p:Version=${{ env.VERSION }}
+      run: dotnet build Csv/Csv.csproj --configuration Release -p:Version=${{ env.VERSION }}
 
+    # net48 tests need Windows and already run in CI. Same Version so the rebuilt net10.0 Csv.dll stays packable.
     - name: Test
-      run: dotnet test Csv.sln --no-build --configuration Release
+      run: dotnet test Csv.Tests/Csv.Tests.csproj --configuration Release -p:Version=${{ env.VERSION }}
 
     - name: Pack
       run: dotnet pack Csv/Csv.csproj --configuration Release --no-build -p:Version=${{ env.VERSION }} --output artifacts

@@ -15,7 +15,7 @@ namespace Csv.Tests
     ///           re-splitting the synthesized full <c>Raw</c>.
     ///   FIX 3 - <c>Raw</c> / <c>RawMemory</c> round-trip the original line text, and on the
     ///           memory paths <c>RawMemory</c> aliases the source buffer (zero-copy intent).
-    /// These run net9.0 only (the test project's TFM), so the netstandard2.0-specific notes
+    /// These run net10.0 only (the test project's TFM), so the netstandard2.0-specific notes
     /// below document the contract the shared code must keep on that target.
     /// </summary>
     [TestClass]
@@ -29,8 +29,8 @@ namespace Csv.Tests
         // column when ReturnEmptyForMissingColumn is set. The risk this pins is
         // netstandard2.0-specific: there MemoryText == string, so a `default(MemoryText)`
         // empty would be NULL, not "". Returning an explicit "".AsMemory() keeps the value
-        // non-null on every target. These tests run on net9 only, so they assert the
-        // observable net9 contract (Length == 0 on the memory surfaces, non-null "" on the
+        // non-null on every target. These tests run on net10 only, so they assert the
+        // observable net10 contract (Length == 0 on the memory surfaces, non-null "" on the
         // ICsvLine string surface) and document the ns2.0 intent.
 
         private const string TwoCol = "a,b\n1,2\n";

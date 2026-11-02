@@ -5,11 +5,11 @@
 
     netstandard2.0 is a compatibility surface, not a runnable framework, so this project
     targets .NET Framework 4.8: net48 is compatible with netstandard2.0 but NOT with
-    net8.0/net9.0, so the Csv project reference resolves to the netstandard2.0 asset
+    net10.0, so the Csv project reference resolves to the netstandard2.0 asset
     (the same resolution the review probe relied on). This is the only place tests run
     against the ns2.0 path - where the MemoryText type alias is `string` and the
     ReturnEmptyForMissingColumn "" vs null contract lives. The main Csv.Tests project
-    (net9.0) covers the net8+ Span/Memory surface.
+    (net10.0) covers the net8+ Span/Memory surface.
 
     LangVersion is pinned to latest because the SDK otherwise defaults net48 to C# 7.3.
   -->
