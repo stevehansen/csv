@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-11-02
+
 ### Changed
 - **Breaking**: target frameworks are now `netstandard2.0` and `net10.0` (dropped `net8.0` and `net9.0`)
   - .NET 8/9 apps now resolve the `netstandard2.0` build, which lacks the Span/Memory APIs (`ReadAsSpan`, `ReadFromMemoryOptimized`, `CsvBufferWriter`, ...)
@@ -291,6 +293,7 @@ The library was initially released with comprehensive CSV reading and writing fu
 
 For more details on each release, see the [commit history](https://github.com/stevehansen/csv/commits/master) or visit the [NuGet package page](https://www.nuget.org/packages/Csv/).
 
+[3.0.0]: https://www.nuget.org/packages/Csv/3.0.0
 [2.0.245]: https://www.nuget.org/packages/Csv/2.0.245
 [2.0.217]: https://www.nuget.org/packages/Csv/2.0.217
 [2.0.205]: https://www.nuget.org/packages/Csv/2.0.205
