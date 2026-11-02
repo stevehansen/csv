@@ -54,7 +54,7 @@ namespace Csv.Tests
 
             // Verify the values are parsed correctly
             Assert.AreEqual("Test", record.Values[0]);
-            Assert.AreEqual("A\r\nB\r\nC\r\nD\r\nE\r\nF\r\nG\r\nH", record.Values[1]);
+            Assert.AreEqual(string.Join(Environment.NewLine, "A", "B", "C", "D", "E", "F", "G", "H"), record.Values[1]);
             Assert.AreEqual("testing with very long string", record.Values[2]);
             Assert.AreEqual("123123", record.Values[3]);
 
@@ -260,7 +260,7 @@ D;1;2;3;;
             Assert.HasCount(2, lines);
             Assert.AreEqual(2, lines[0].ColumnCount);
             Assert.AreEqual("A", lines[0][0]);
-            Assert.AreEqual("foo\r\nbar", lines[0][1]);
+            Assert.AreEqual($"foo{Environment.NewLine}bar", lines[0][1]);
             Assert.AreEqual("B", lines[1][0]);
             Assert.AreEqual("2", lines[1][1]);
         }
