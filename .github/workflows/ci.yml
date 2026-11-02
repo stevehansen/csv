@@ -8,6 +8,26 @@ on:
 
 jobs:
   build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+
+    # 9.0 runtime is needed because Csv.Tests targets net9.0
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: |
+          9.0.x
+          10.0.x
+
+    - name: Build
+      run: dotnet build Csv/Csv.csproj --configuration Release
+
+    - name: Test
+      run: dotnet test Csv.Tests/Csv.Tests.csproj --configuration Release
+
+  # net48 tests (the only coverage of the netstandard2.0 build) need Windows
+  netstandard:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v7
@@ -17,8 +37,5 @@ jobs:
       with:
         dotnet-version: '10.0.x'
 
-    - name: Build
-      run: dotnet build Csv.sln --configuration Release
-
     - name: Test
-      run: dotnet test Csv.sln --no-build --configuration Release
+      run: dotnet test Csv.Tests.NetStandard/Csv.Tests.NetStandard.csproj --configuration Release
