@@ -2,7 +2,7 @@
 
 [![NuGet Version](https://img.shields.io/nuget/v/Csv.svg?style=flat)](https://www.nuget.org/packages/Csv/)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/Csv.svg?style=flat)](https://www.nuget.org/packages/Csv/)
-[![Build status](https://ci.appveyor.com/api/projects/status/d1m0vu1n7idsk7uu?svg=true)](https://ci.appveyor.com/project/SteveHansen/csv)
+[![CI](https://github.com/stevehansen/csv/actions/workflows/ci.yml/badge.svg)](https://github.com/stevehansen/csv/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/stevehansen/csv/branch/master/graph/badge.svg)](https://codecov.io/gh/stevehansen/csv)
 
 Really simple csv library
@@ -171,7 +171,7 @@ passing a `CancellationToken`. For .NET 8.0+, memory-efficient overloads using
 
 [![NuGet Version](https://img.shields.io/nuget/v/Csv.svg?style=flat)](https://www.nuget.org/packages/Csv/)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/Csv.svg?style=flat)](https://www.nuget.org/packages/Csv/)
-[![Build status](https://ci.appveyor.com/api/projects/status/d1m0vu1n7idsk7uu?svg=true)](https://ci.appveyor.com/project/SteveHansen/csv)
+[![CI](https://github.com/stevehansen/csv/actions/workflows/ci.yml/badge.svg)](https://github.com/stevehansen/csv/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/stevehansen/csv/branch/master/graph/badge.svg)](https://codecov.io/gh/stevehansen/csv)
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fstevehansen%2Fcsv.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fstevehansen%2Fcsv?ref=badge_shield)
 

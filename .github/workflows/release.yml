@@ -1,0 +1,41 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+      id-token: write # NuGet trusted publishing
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: '9.0.x'
+
+    # The tag is the package version: v2.0.246 publishes 2.0.246
+    - name: Version from tag
+      shell: bash
+      run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+    - name: Build
+      run: dotnet build Csv.sln --configuration Release -p:Version=${{ env.VERSION }}
+
+    - name: Test
+      run: dotnet test Csv.sln --no-build --configuration Release
+
+    - name: Pack
+      run: dotnet pack Csv/Csv.csproj --configuration Release --no-build -p:Version=${{ env.VERSION }} --output artifacts
+
+    - uses: NuGet/login@v1
+      id: login
+      with:
+        user: Steve_at_2sky # nuget.org owner of the trusted publishing policy
+
+    - name: Push
+      run: dotnet nuget push artifacts/*.nupkg --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
