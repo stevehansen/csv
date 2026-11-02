@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 This repository contains a small CSV parsing/writing library and accompanying MSTest suite.
-The code targets multiple frameworks (including `netstandard2.0`, `net8.0` and `net9.0`).
+The code targets multiple frameworks (`netstandard2.0` and `net10.0`).
 
 ## Contributing with Codex
 

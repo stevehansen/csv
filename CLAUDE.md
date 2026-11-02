@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a .NET CSV parsing and writing library (`Csv`) that supports multiple target frameworks (netstandard2.0, net8.0, net9.0). The library provides simple and efficient CSV reading and writing capabilities with extensive configuration options.
+This is a .NET CSV parsing and writing library (`Csv`) that supports multiple target frameworks (netstandard2.0, net10.0). The library provides simple and efficient CSV reading and writing capabilities with extensive configuration options.
 
 ## Architecture
 
@@ -35,7 +35,7 @@ This is a .NET CSV parsing and writing library (`Csv`) that supports multiple ta
 
 ### Key Features & Conditional Compilation
 
-- Multi-framework targeting (netstandard2.0, net8.0, net9.0)
+- Multi-framework targeting (netstandard2.0, net10.0)
 - Async support (`IAsyncEnumerable` for NET8.0+)
 - Memory-efficient parsing with `ReadOnlyMemory<char>` and `ReadOnlySpan<char>` support (NET8.0+)
 - Extensive configuration options through `CsvOptions`
@@ -71,7 +71,7 @@ dotnet pack
 
 ### Build for Specific Framework
 ```bash
-dotnet build -f net8.0
+dotnet build -f net10.0
 ```
 
 ## Testing
@@ -85,7 +85,7 @@ The project uses MSTest framework with test files in `Csv.Tests/`:
 - `RegexEliminationTests.cs` - Tests for regex-free parsing
 - `PerformanceTests.cs` / `RegexPerformanceTests.cs` - Performance benchmarks
 
-The tests target net9.0. When adding tests for framework-specific features (NET8.0+ Span/Memory APIs), use appropriate `#if NET8_0_OR_GREATER` directives.
+The tests target net10.0. When adding tests for framework-specific features (NET8.0+ Span/Memory APIs), use appropriate `#if NET8_0_OR_GREATER` directives.
 
 ## Configuration
 

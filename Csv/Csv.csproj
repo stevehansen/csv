@@ -5,7 +5,7 @@
     <Copyright>Copyright © Steve Hansen 2015-2026</Copyright>
     <AssemblyTitle>Csv</AssemblyTitle>
     <Authors>Steve Hansen</Authors>
-    <TargetFrameworks>netstandard2.0;net8.0;net9.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;net10.0</TargetFrameworks>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <AssemblyName>Csv</AssemblyName>
     <PackageId>Csv</PackageId>
@@ -17,7 +17,6 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
 	<RepositoryUrl>https://github.com/stevehansen/csv.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <NetStandardImplicitPackageVersion>1.6.0</NetStandardImplicitPackageVersion>
     <GenerateAssemblyTitleAttribute>true</GenerateAssemblyTitleAttribute>
     <GenerateAssemblyDescriptionAttribute>true</GenerateAssemblyDescriptionAttribute>
     <GenerateAssemblyConfigurationAttribute>false</GenerateAssemblyConfigurationAttribute>

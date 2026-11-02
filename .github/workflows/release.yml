@@ -16,9 +16,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: |
-          9.0.x
-          10.0.x
+        dotnet-version: '10.0.x'
 
     # The tag is the package version: v2.0.246 publishes 2.0.246
     - name: Version from tag
@@ -28,7 +26,7 @@ jobs:
     - name: Build
       run: dotnet build Csv/Csv.csproj --configuration Release -p:Version=${{ env.VERSION }}
 
-    # net48 tests need Windows and already run in CI. Same Version so the rebuilt net9.0 Csv.dll stays packable.
+    # net48 tests need Windows and already run in CI. Same Version so the rebuilt net10.0 Csv.dll stays packable.
     - name: Test
       run: dotnet test Csv.Tests/Csv.Tests.csproj --configuration Release -p:Version=${{ env.VERSION }}
 

@@ -5,7 +5,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace Csv.Tests.NetStandard
 {
     /// <summary>
-    /// Pins the netstandard2.0 build of Csv at runtime. The main Csv.Tests suite runs net9.0
+    /// Pins the netstandard2.0 build of Csv at runtime. The main Csv.Tests suite runs net10.0
     /// only, so without this project the ns2.0 behavioral path - where the <c>MemoryText</c>
     /// type alias is <c>string</c>, and a <c>default(MemoryText)</c> empty would be <c>null</c>
     /// rather than <c>""</c> - is verified by inspection alone. These tests, together with the

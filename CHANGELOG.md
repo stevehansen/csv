@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Breaking**: target frameworks are now `netstandard2.0` and `net10.0` (dropped `net8.0` and `net9.0`)
+  - .NET 8/9 apps now resolve the `netstandard2.0` build, which lacks the Span/Memory APIs (`ReadAsSpan`, `ReadFromMemoryOptimized`, `CsvBufferWriter`, ...)
+- Removed the stale `NetStandardImplicitPackageVersion` 1.6.0 pin; it broke the `netstandard2.0` build once NuGet package pruning kicked in for `net10.0`
+
 ### Fixed
 - ReadFromStreamAsync and ReadFromTextAsync dropping cancellation tokens when consumed with .WithCancellation(ct)
   - Async enumerator implementations now carry [EnumeratorCancellation] and forward tokens to the underlying reader engine
