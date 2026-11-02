@@ -497,6 +497,15 @@ namespace Csv.Tests
         }
 #endif
 
+        [TestMethod]
+        public void MultipleQuotesAreDoubled()
+        {
+            var expected = $"A,B{Environment.NewLine}\"a\"\"b\"\"\"\"c\",\"\"\"\"{Environment.NewLine}";
+
+            Assert.AreEqual(expected, CsvWriter.WriteToText(["A", "B"], [["a\"b\"\"c", "\""]]));
+            Assert.AreEqual(expected, CsvWriter.WriteToText(["A".AsMemory(), "B".AsMemory()], [["a\"b\"\"c".AsMemory(), "\"".AsMemory()]]));
+        }
+
         private static void CheckOutput(string[] headers, IEnumerable<string[]> lines, string expectedCsv, char separator = ',')
         {
             var rows = lines.ToArray();

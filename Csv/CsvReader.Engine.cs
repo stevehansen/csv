@@ -35,7 +35,7 @@ namespace Csv
 
         internal interface IRowFactory<TRow> where TRow : class
         {
-            TRow Create(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, string? rawString, IList<MemoryText>? rawSplit, CsvOptions options);
+            TRow Create(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, string? rawString, MemoryText[]? rawSplit, CsvOptions options);
         }
 
         internal readonly struct TextReaderLineSource : ILineSource
@@ -188,7 +188,7 @@ namespace Csv
 
         internal readonly struct StringRowFactory : IRowFactory<CsvLine<DefaultTrimSplit>>
         {
-            public CsvLine<DefaultTrimSplit> Create(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, string? rawString, IList<MemoryText>? rawSplit, CsvOptions options)
+            public CsvLine<DefaultTrimSplit> Create(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, string? rawString, MemoryText[]? rawSplit, CsvOptions options)
             {
                 var row = new CsvLine<DefaultTrimSplit>(headers, headerLookup, index, raw, rawString, options);
                 if (rawSplit != null)
@@ -200,7 +200,7 @@ namespace Csv
 #if NET8_0_OR_GREATER
         internal readonly struct SpanRowFactory : IRowFactory<CsvLine<DefaultTrimSplit>>
         {
-            public CsvLine<DefaultTrimSplit> Create(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, string? rawString, IList<MemoryText>? rawSplit, CsvOptions options)
+            public CsvLine<DefaultTrimSplit> Create(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, string? rawString, MemoryText[]? rawSplit, CsvOptions options)
             {
                 var row = new CsvLine<DefaultTrimSplit>(headers, headerLookup, index, raw, rawString, options);
                 if (rawSplit != null)
@@ -218,7 +218,7 @@ namespace Csv
                 this.memoryOptions = memoryOptions;
             }
 
-            public CsvLine<OptimizedTrimSplit> Create(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, string? rawString, IList<MemoryText>? rawSplit, CsvOptions options)
+            public CsvLine<OptimizedTrimSplit> Create(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, string? rawString, MemoryText[]? rawSplit, CsvOptions options)
             {
                 var row = new CsvLine<OptimizedTrimSplit>(headers, headerLookup, index, raw, rawString, options, new OptimizedTrimSplit(memoryOptions));
                 if (rawSplit != null)
@@ -229,7 +229,7 @@ namespace Csv
 
         internal readonly struct MemoryRowFactory : IRowFactory<CsvLine<DefaultTrimSplit>>
         {
-            public CsvLine<DefaultTrimSplit> Create(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, string? rawString, IList<MemoryText>? rawSplit, CsvOptions options)
+            public CsvLine<DefaultTrimSplit> Create(MemoryText[] headers, Dictionary<string, int> headerLookup, int index, MemoryText raw, string? rawString, MemoryText[]? rawSplit, CsvOptions options)
             {
                 var row = new CsvLine<DefaultTrimSplit>(headers, headerLookup, index, raw, rawString, options);
                 if (rawSplit != null)
@@ -257,7 +257,7 @@ namespace Csv
                 if (index <= options.RowsToSkip || options.SkipRow?.Invoke(line, index) == true)
                     continue;
 
-                IList<MemoryText>? rawSplit = null;
+                MemoryText[]? rawSplit = null;
 
                 if (headers == null || headerLookup == null)
                 {
@@ -271,7 +271,7 @@ namespace Csv
                     {
                         rawSplit = options.Splitter.Split(line, options);
 
-                        while (rawSplit.Count > 0 && CsvLineSplitter.IsUnterminatedQuotedValue(rawSplit[rawSplit.Count - 1].AsSpan(), options))
+                        while (rawSplit.Length > 0 && CsvLineSplitter.IsUnterminatedQuotedValue(rawSplit[rawSplit.Length - 1].AsSpan(), options))
                         {
                             if (!source.TryReadLine(out var nextLine, out _))
                                 break;
@@ -325,7 +325,7 @@ namespace Csv
                 if (options.AllowNewLineInEnclosedFieldValues && !isFirstDataLineInHeaderAbsentMode)
                 {
                     rawSplit = options.Splitter.Split(line, options, headers!.Length);
-                    while (rawSplit.Count > 0 && CsvLineSplitter.IsUnterminatedQuotedValue(rawSplit[rawSplit.Count - 1].AsSpan(), options))
+                    while (rawSplit.Length > 0 && CsvLineSplitter.IsUnterminatedQuotedValue(rawSplit[rawSplit.Length - 1].AsSpan(), options))
                     {
                         if (!source.TryReadLine(out var nextLine, out _))
                             break;
@@ -363,7 +363,7 @@ namespace Csv
                 if (index <= options.RowsToSkip || options.SkipRow?.Invoke(line, index) == true)
                     continue;
 
-                IList<MemoryText>? rawSplit = null;
+                MemoryText[]? rawSplit = null;
 
                 if (headers == null || headerLookup == null)
                 {
@@ -377,7 +377,7 @@ namespace Csv
                     {
                         rawSplit = options.Splitter.Split(line, options);
 
-                        while (rawSplit.Count > 0 && CsvLineSplitter.IsUnterminatedQuotedValue(rawSplit[rawSplit.Count - 1].AsSpan(), options))
+                        while (rawSplit.Length > 0 && CsvLineSplitter.IsUnterminatedQuotedValue(rawSplit[rawSplit.Length - 1].AsSpan(), options))
                         {
                             var (nextOk, nextLine, _) = await source.TryReadLineAsync(ct).ConfigureAwait(false);
                             if (!nextOk)
@@ -432,7 +432,7 @@ namespace Csv
                 if (options.AllowNewLineInEnclosedFieldValues && !isFirstDataLineInHeaderAbsentMode)
                 {
                     rawSplit = options.Splitter.Split(line, options, headers!.Length);
-                    while (rawSplit.Count > 0 && CsvLineSplitter.IsUnterminatedQuotedValue(rawSplit[rawSplit.Count - 1].AsSpan(), options))
+                    while (rawSplit.Length > 0 && CsvLineSplitter.IsUnterminatedQuotedValue(rawSplit[rawSplit.Length - 1].AsSpan(), options))
                     {
                         var (nextOk, nextLine, _) = await source.TryReadLineAsync(ct).ConfigureAwait(false);
                         if (!nextOk)

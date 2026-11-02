@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+﻿using System;
 
 #if NET8_0_OR_GREATER
 using MemoryText = System.ReadOnlyMemory<char>;
@@ -175,7 +175,11 @@ namespace Csv
             return trailingQuoteCount % 2 == 0;
         }
 
-        public IList<MemoryText> Split(MemoryText line, CsvOptions options, int? initialCapacity = null)
+        /// <summary>
+        /// Splits <paramref name="line"/> into an exactly-sized array the caller owns (and may mutate).
+        /// <paramref name="initialCapacity"/> is the expected field count; when it is right the split allocates once.
+        /// </summary>
+        public MemoryText[] Split(MemoryText line, CsvOptions options, int? initialCapacity = null)
         {
 #if NET8_0_OR_GREATER
             var span = line.Span;
@@ -183,58 +187,82 @@ namespace Csv
             var span = line;
 #endif
 
-            var values = initialCapacity.HasValue ? new List<MemoryText>(initialCapacity.Value) : new List<MemoryText>();
+            var allowQuotes = options.AllowEnclosedFieldValues;
+            var allowSingleQuote = allowQuotes && options.AllowSingleQuoteToEncloseFieldValues;
+            var allowBackslashEscape = options.AllowBackSlashToEscapeQuote;
+            var trimData = options.TrimData;
+
+            var values = new MemoryText[initialCapacity > 0 ? initialCapacity.Value : 8];
+            var count = 0;
             var start = 0;
             var inQuotes = false;
             char quoteChar = '\0';
 
-            for (var i = 0; i < span.Length; i++)
+            var i = 0;
+            while (i < span.Length)
             {
-                var ch = span[i];
                 if (inQuotes)
                 {
-                    if (options.AllowBackSlashToEscapeQuote && ch == '\\' && i + 1 < span.Length && span[i + 1] == quoteChar)
+#if NET8_0_OR_GREATER
+                    // Jump straight to the next char that can end or escape the quoted value
+                    var next = allowBackslashEscape ? span.Slice(i).IndexOfAny(quoteChar, '\\') : span.Slice(i).IndexOf(quoteChar);
+                    if (next < 0)
+                        break;
+                    i += next;
+#endif
+                    var ch = span[i];
+                    if (allowBackslashEscape && ch == '\\' && i + 1 < span.Length && span[i + 1] == quoteChar)
+                        i += 2; // skip escaped quote
+                    else if (ch == quoteChar && i + 1 < span.Length && span[i + 1] == quoteChar)
+                        i += 2; // escaped quote
+                    else
                     {
-                        i++; // skip escaped quote
-                    }
-                    else if (ch == quoteChar)
-                    {
-                        if (i + 1 < span.Length && span[i + 1] == quoteChar)
-                        {
-                            i++; // escaped quote
-                        }
-                        else
-                        {
+                        if (ch == quoteChar)
                             inQuotes = false;
-                        }
+                        i++;
                     }
                 }
                 else
                 {
+#if NET8_0_OR_GREATER
+                    // Jump straight to the next char that can end a field or open a quoted value
+                    var rest = span.Slice(i);
+                    var next = !allowQuotes ? rest.IndexOf(separator)
+                        : allowSingleQuote ? rest.IndexOfAny(separator, '"', '\'')
+                        : rest.IndexOfAny(separator, '"');
+                    if (next < 0)
+                        break;
+                    i += next;
+#endif
+                    var ch = span[i];
                     if (ch == separator)
                     {
+                        if (count == values.Length)
+                            Array.Resize(ref values, values.Length * 2);
 #if NET8_0_OR_GREATER
-                        var value = line.Slice(start, i - start);
+                        values[count++] = line.Slice(start, i - start);
 #else
-                        var value = line.Substring(start, i - start);
+                        values[count++] = line.Substring(start, i - start);
 #endif
-                        values.Add(value);
                         start = i + 1;
                     }
-                    else if (options.AllowEnclosedFieldValues && (ch == '"' || (options.AllowSingleQuoteToEncloseFieldValues && ch == '\'')) && IsAtFieldOpen(span, start, i, options.TrimData))
+                    else if (allowQuotes && (ch == '"' || (allowSingleQuote && ch == '\'')) && IsAtFieldOpen(span, start, i, trimData))
                     {
                         inQuotes = true;
                         quoteChar = ch;
                     }
+
+                    i++;
                 }
             }
 
+            if (count + 1 != values.Length)
+                Array.Resize(ref values, count + 1);
 #if NET8_0_OR_GREATER
-            var last = line.Slice(start);
+            values[count] = line.Slice(start);
 #else
-            var last = line.Substring(start);
+            values[count] = line.Substring(start);
 #endif
-            values.Add(last);
             return values;
         }
     }

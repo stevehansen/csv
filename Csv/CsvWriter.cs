@@ -481,22 +481,17 @@ namespace Csv
 
                 if (i < data.Length)
                 {
+#if NET8_0_OR_GREATER
+                    WriteCellMemory(writer, (data[i] ?? string.Empty).AsSpan(), separator);
+#else
                     var mustQuote = false;
                     var cell = data[i] ?? string.Empty;
-#if NET8_0_OR_GREATER
-                    if (cell.Contains('"'))
-#else
                     if (cell.Contains("\""))
-#endif
                     {
                         mustQuote = true;
                         cell = cell.Replace("\"", "\"\"");
                     }
-#if NET8_0_OR_GREATER
-                    else if (cell.Contains(separator) || cell.AsSpan().IndexOfAny(QuoteTriggerChars) >= 0)
-#else
                     else if (cell.IndexOf(separator) >= 0 || cell.IndexOfAny(QuoteTriggerCharsArray) >= 0)
-#endif
                         mustQuote = true;
 
                     if (mustQuote)
@@ -504,6 +499,7 @@ namespace Csv
                     writer.Write(cell);
                     if (mustQuote)
                         writer.Write('"');
+#endif
                 }
             }
 
@@ -622,19 +618,21 @@ namespace Csv
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void WriteCellMemory(TextWriter writer, ReadOnlySpan<char> cell, char separator)
         {
-            if (cell.Contains('"'))
+            var quote = cell.IndexOf('"');
+            if (quote >= 0)
             {
                 writer.Write('"');
 
-                for (int i = 0; i < cell.Length; i++)
+                // Write each segment up to and including a quote, then double that quote
+                do
                 {
-                    var ch = cell[i];
-                    if (ch == '"')
-                        writer.Write("\"\"");
-                    else
-                        writer.Write(ch);
-                }
+                    writer.Write(cell[..(quote + 1)]);
+                    writer.Write('"');
+                    cell = cell[(quote + 1)..];
+                    quote = cell.IndexOf('"');
+                } while (quote >= 0);
 
+                writer.Write(cell);
                 writer.Write('"');
             }
             else if (cell.Contains(separator) || cell.IndexOfAny(QuoteTriggerChars) >= 0)
