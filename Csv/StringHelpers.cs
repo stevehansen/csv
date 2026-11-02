@@ -59,31 +59,43 @@ namespace Csv
             return true;
         }
 
-        internal static MemoryText Unescape(this MemoryText str, char escape, char actual, int start = 0)
+        // ie: "test#-test", '#', '-' returns "test-test". Returns str itself (no allocation) when nothing is escaped.
+        internal static MemoryText Unescape(this MemoryText str, char escape, char actual)
         {
-            // We assume that most values will have none or one escaped sequence, so optimize for that
-
             var span = str.Span;
-            var maxLength = span.Length - 1;
-            for (var i = start; i < maxLength; i++)
-            {
-                if (span[i] == escape && span[i + 1] == actual)
-                {
-                    // ie: "test#-test", '#', '-' would return "test-test"
-                    // i would be 4 and we need to keep the first 4, skip 1, and keep the rest
-                    // since the new span will be 1 shorter we need to continue after the actual char and check 1 less as total length
 
-                    var actualStart = i + 1;
-                    var remainder = str[actualStart..].Unescape(escape, actual, 1); // NOTE: We need to skip the first char as it is already unescaped
-                    var chars = new char[i + remainder.Length];
-                    var result = new Memory<char>(chars);
-                    str[..i].CopyTo(result);
-                    remainder.CopyTo(result[i..]);
-                    return result;
-                }
+            var first = 0;
+            while (true)
+            {
+                var found = span[first..].IndexOf(escape);
+                if (found < 0)
+                    return str;
+
+                first += found;
+                if (first + 1 >= span.Length)
+                    return str;
+
+                if (span[first + 1] == actual)
+                    break;
+
+                first++;
             }
 
-            return str;
+            var chars = new char[span.Length - 1];
+            span[..first].CopyTo(chars);
+            var written = first;
+            for (var i = first; i < span.Length;)
+            {
+                if (span[i] == escape && i + 1 < span.Length && span[i + 1] == actual)
+                {
+                    chars[written++] = actual;
+                    i += 2;
+                }
+                else
+                    chars[written++] = span[i++];
+            }
+
+            return new MemoryText(chars, 0, written);
         }
 
         internal static MemoryText ReadLine(this MemoryText reader, ref int position)

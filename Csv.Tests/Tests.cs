@@ -1148,5 +1148,34 @@ namespace Csv.Tests
             Assert.AreEqual("2", lines[0]["a2"]);
             Assert.AreEqual("3", lines[0]["B"]);
         }
+
+        [TestMethod]
+        public void RowWithMoreFieldsThanHeaders()
+        {
+            var line = CsvReader.ReadFromText("A,B\n1,2,3,4,5,6,7,8,9,10").Single();
+
+            Assert.AreEqual(10, line.ColumnCount);
+            Assert.AreEqual("10", line[9]);
+            Assert.AreEqual("1,2,3,4,5,6,7,8,9,10", line.Raw);
+        }
+
+        [TestMethod]
+        public void QuotedFieldsWithMultipleEscapes()
+        {
+            var options = new CsvOptions { AllowBackSlashToEscapeQuote = true };
+            var line = CsvReader.ReadFromText("A,B,C\n\"a \"\"b\"\" \"\"c\"\"\",\"x\\\"y\\\"z\",'q,r'", options).Single();
+
+            Assert.AreEqual("a \"b\" \"c\"", line["A"]);
+            Assert.AreEqual("x\"y\"z", line["B"]);
+            Assert.AreEqual("'q", line[2]);
+        }
+
+        [TestMethod]
+        public void ConcurrentValueAccessUnescapesOnce()
+        {
+            var lines = CsvReader.ReadFromText("A\n\"\"\"\"\"\"\"\"\"\"").ToArray();
+
+            Parallel.For(0, 64, _ => Assert.AreEqual("\"\"\"\"", lines[0][0]));
+        }
     }
 }
