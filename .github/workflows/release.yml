@@ -16,7 +16,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: '10.0.x'
+        dotnet-version: '11.0.x'
 
     # The tag is the package version: v2.0.246 publishes 2.0.246
     - name: Version from tag
