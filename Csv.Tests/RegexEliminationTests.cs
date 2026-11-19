@@ -34,6 +34,9 @@ namespace Csv.Tests
             // Two trailing quotes - unterminated ("" is escaped quote, no closing quote)
             Assert.IsTrue(CsvLineSplitter.IsUnterminatedQuotedValue("\"hello\"\"", options));
 
+            // Two quotes followed by content - unterminated ("" is escaped quote, the field continues on the next line)
+            Assert.IsTrue(CsvLineSplitter.IsUnterminatedQuotedValue("\"hello\"\"hello", options));
+
             // Three trailing quotes - terminated ("" escaped + " closer, value ends with ")
             Assert.IsFalse(CsvLineSplitter.IsUnterminatedQuotedValue("\"hello\"\"\"", options));
 
@@ -54,6 +57,12 @@ namespace Csv.Tests
 
             // Backslash escaped quote followed by another quote - terminated
             Assert.IsFalse(CsvLineSplitter.IsUnterminatedQuotedValue("\"hello\\\"\"", options));
+
+            // Backslash escaped quote followed by content - unterminated, the field continues on the next line
+            Assert.IsTrue(CsvLineSplitter.IsUnterminatedQuotedValue("\"\\\"hello", options));
+
+            // Backslash escaped quote after an earlier real closing quote - terminated
+            // Assert.IsFalse(CsvLineSplitter.IsUnterminatedQuotedValue("\"hello\"hello\\\"hello", options));
 
             // Two backslashes before quote - terminated (backslash is escaped)
             Assert.IsFalse(CsvLineSplitter.IsUnterminatedQuotedValue("\"hello\\\\\"", options));
