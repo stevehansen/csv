@@ -98,81 +98,43 @@ namespace Csv
             if (span.Length == 0)
                 return true;
 
-            // Check if there's any quote in the string
-            int lastQuoteIndex = -1;
-            for (int j = span.Length - 1; j >= 0; j--)
+            // Walk through the value until a real closing quote is found. A quote escaped
+            // by an odd run of backslashes or by another quote is literal data. Skipping
+            // both forms is essential when content follows them: otherwise the field looks
+            // terminated and its continuation line is never concatenated.
+            for (var i = 0; i < span.Length; i++)
             {
-                if (span[j] == quoteChar)
+                if (span[i] != quoteChar)
+                    continue;
+
+                if (allowBackslashEscape && IsEscapedByBackslash(span, i))
+                    continue;
+
+                if (i + 1 < span.Length && span[i + 1] == quoteChar)
                 {
-                    lastQuoteIndex = j;
-                    break;
+                    i++;
+                    continue;
                 }
-            }
-            
-            // No quotes at all means unterminated
-            if (lastQuoteIndex == -1)
-                return true;
-                
-            // If there's content after the last quote, it's considered terminated (though malformed)
-            if (lastQuoteIndex < span.Length - 1)
+
                 return false;
-            
-            // Count trailing quotes
-            int trailingQuoteCount = 0;
-            int i = span.Length - 1;
-            
-            while (i >= 0 && span[i] == quoteChar)
-            {
-                trailingQuoteCount++;
-                i--;
             }
-            
-            // Check if the last quote is escaped by a backslash
-            if (allowBackslashEscape && i >= 0 && span[i] == '\\')
+
+            return true;
+        }
+
+        private static bool IsEscapedByBackslash(SpanText span, int quoteIndex)
+        {
+            // An odd run of backslashes immediately before the quote escapes it;
+            // an even run means the backslashes escape each other and the quote is real.
+            int backslashes = 0;
+            int k = quoteIndex - 1;
+            while (k >= 0 && span[k] == '\\')
             {
-                // Count preceding backslashes
-                int backslashCount = 0;
-                while (i >= 0 && span[i] == '\\')
-                {
-                    backslashCount++;
-                    i--;
-                }
-                
-                // If odd number of backslashes, the last quote is escaped
-                if (backslashCount % 2 == 1)
-                {
-                    // Remove the escaped quote from count
-                    trailingQuoteCount--;
-                    
-                    // If no quotes left after removing the escaped one, it's unterminated
-                    if (trailingQuoteCount == 0)
-                        return true;
-                }
+                backslashes++;
+                k--;
             }
-            
-            // In CSV, quotes are escaped by doubling them ("" becomes ").
-            // When checking if a quoted value is unterminated (continues on next line),
-            // we need to determine if the trailing quotes indicate an incomplete field.
-            //
-            // According to RFC 4180:
-            // - "" inside a quoted field = escaped quote (one " character in value)
-            // - A single " after content = closing quote
-            //
-            // Therefore, for trailing quotes:
-            // - 1 trailing quote = terminated (the closing quote)
-            // - 2 trailing quotes = unterminated ("" is escaped quote, no closer)
-            // - 3 trailing quotes = terminated ("" escaped + " closer, value ends with ")
-            // - 4 trailing quotes = unterminated ("" + "" = two escaped, no closer)
-            // - etc.
-            //
-            // Pattern: odd = terminated, even = unterminated
 
-            if (trailingQuoteCount == 1)
-                return false; // always terminated - this is the closing quote
-
-            // Even number of trailing quotes means all are escaped pairs with no closer
-            // Odd number means escape pairs + one closing quote
-            return trailingQuoteCount % 2 == 0;
+            return backslashes % 2 == 1;
         }
 
         /// <summary>

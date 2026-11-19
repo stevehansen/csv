@@ -469,6 +469,37 @@ namespace Csv.Tests
         }
 
         [TestMethod]
+        public void WithAllowNewLineInEnclosedFieldValues_EscapedQuoteAndCRLFInsideQuotedValue()
+        {
+            var options = new CsvOptions
+            {
+                AllowNewLineInEnclosedFieldValues = true,
+                NewLine = "\n",
+                AllowBackSlashToEscapeQuote = true
+            };
+            var lines = CsvReader.ReadFromText("a,b\n\"\\\"one\ntwo\",three", options).ToArray();
+            Assert.HasCount(1, lines);
+            Assert.AreEqual(2, lines[0].ColumnCount);
+            Assert.AreEqual("\"one\ntwo", lines[0][0]);
+            Assert.AreEqual("three", lines[0][1]);
+        }
+
+        [TestMethod]
+        public void WithAllowNewLineInEnclosedFieldValues_DoubledQuoteAndCRLFInsideQuotedValue()
+        {
+            var options = new CsvOptions
+            {
+                AllowNewLineInEnclosedFieldValues = true,
+                NewLine = "\n"
+            };
+            var lines = CsvReader.ReadFromText("a,b\n\"\"\"one\ntwo\",three", options).ToArray();
+            Assert.HasCount(1, lines);
+            Assert.AreEqual(2, lines[0].ColumnCount);
+            Assert.AreEqual("\"one\ntwo", lines[0][0]);
+            Assert.AreEqual("three", lines[0][1]);
+        }
+
+        [TestMethod]
         public void WithAllowBackSlashToEscapeQuote()
         {
             var options = new CsvOptions
